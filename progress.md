@@ -16,9 +16,9 @@
 
 ### Create Page
 - [x] Task 9: Build Create page layout
-- [x] Task 10: Implement audio recording
-- [ ] Task 11: Build Script reading feature
-- [ ] Task 12: Build AI TTS interface
+- [x] Task 10: Implement audio recording (+ UX redesign)
+- [x] Task 11: Build Script reading feature
+- [x] Task 12: Build AI TTS interface
 
 ### Templates Page
 - [ ] Task 13: Build Templates page layout
@@ -380,52 +380,141 @@ Run `npm start` and check:
 
 ---
 
-### Task 10: Implement audio recording
+### Task 10: Implement audio recording (+ UX redesign)
 **Status:** Complete
 **Date:** 2026-01-26
 
 **Changes made:**
-1. Installed `expo-av`:
-   - Audio recording and playback library
+1. Installed `expo-audio` (replaced deprecated expo-av):
+   - Modern audio recording and playback library
+   - Uses `useAudioRecorder` and `useAudioPlayer` hooks from expo-audio
 
 2. Created `/hooks/useAudioRecorder.ts`:
-   - Custom hook for audio recording functionality
+   - Custom hook wrapping expo-audio functionality
    - States: idle, recording, recorded, playing
-   - `startRecording()` - requests permission and starts recording
-   - `stopRecording()` - stops and saves recording URI
-   - `playRecording()` - plays back the recorded audio
-   - `stopPlayback()` - stops playback
-   - `discardRecording()` - deletes the recording file
+   - `startRecording()` - sets audio mode, requests permission, starts recording
+   - `stopRecording()` - stops recording, polls for URI availability
+   - `playRecording()` / `stopPlayback()` - playback controls
+   - `discardRecording()` - resets state
    - Duration tracking with interval timer
-   - Permission handling with `requestPermission()`
-   - `formatDuration()` helper function (MM:SS format)
+   - `formatDuration()` helper (MM:SS format)
 
-3. Updated `/app/(tabs)/create.tsx`:
-   - RecordSection now fully functional:
-     - Large duration display (MM:SS)
-     - Record button with pulse animation when recording
-     - Button changes to stop icon (red) when recording
-     - After recording: play, delete, and save buttons appear
-     - Play button toggles to pause during playback
-     - Permission request alert if denied
-     - Save confirmation alert
+3. **Major UX Redesign** of `/app/(tabs)/create.tsx`:
+   - **New full-screen mode approach:**
+     - Selection screen shows 3 path cards with chevron arrows
+     - Tapping a card transitions to full-screen interface
+     - Back button in header to return to selection
+   - **RecordScreen component:**
+     - Large 72px centered timer display
+     - Big 120px pulsing record button
+     - Status text (Ready/Recording/Complete/Playing)
+     - Control buttons (Play/Discard/Save) with labels
+     - FadeIn animation when controls appear
+     - Confirmation dialogs for discard and save
+   - **ScriptScreen & AITTSScreen placeholders** with Coming Soon messages
 
 **New dependencies:**
-- `expo-av`
+- `expo-av` (for audio recording and playback)
 
 **Files created:**
 - `hooks/useAudioRecorder.ts`
+
+**Files modified:**
+- `app/(tabs)/create.tsx` (complete rewrite)
+
+**Important Note:**
+Initially implemented with `expo-audio`, but discovered a critical bug where `useAudioRecorder` hook doesn't actually save recording files to disk. Switched to `expo-av` which is deprecated but works reliably. The `expo-av` library will be removed in SDK 55, so this will need migration once `expo-audio` is fixed.
+
+**How to verify:**
+Run `npm start` and check:
+- Create tab shows 3 cards with chevron arrows
+- Tap "Record Audio" → full-screen recording interface
+- Large timer, big record button centered
+- Record → button turns red, pulses, timer counts
+- Stop → control buttons appear below (Play/Discard/Save)
+- Play button plays back the recorded audio
+- Back button returns to selection screen
+
+---
+
+### Task 11: Build Script reading feature
+**Status:** Complete
+**Date:** 2026-01-26
+
+**Changes made:**
+1. Created `/data/scripts.ts`:
+   - `Script` interface with id, title, category, text, duration
+   - 4 categories: motivation, gentle, energetic, mindful
+   - 12 pre-written motivational scripts (3 per category)
+   - `SCRIPT_CATEGORIES` constant for filter UI
+   - `getScriptsByCategory()` helper function
+
+2. Updated `/app/(tabs)/create.tsx` - ScriptScreen:
+   - Category filter with horizontal scrolling chips
+   - Script list showing title, preview text, duration, category badge
+   - Cards with shadow and rounded corners
+   - Tap script to open recording view
+
+3. Updated `/app/(tabs)/create.tsx` - ScriptRecordView:
+   - Full script text displayed in card for reading
+   - Recording controls (mic button with pulse animation)
+   - Duration timer display
+   - Status text (Ready/Recording/Complete/Playing)
+   - Play/Discard/Save controls after recording
+   - Confirmation dialogs for discard and save
+
+**Files created:**
+- `data/scripts.ts`
 
 **Files modified:**
 - `app/(tabs)/create.tsx`
 
 **How to verify:**
 Run `npm start` and check:
-- Select "Record Audio" card
-- Tap record button - permission prompt appears (first time)
-- Button turns red with stop icon, pulses while recording
-- Duration counter increments
-- Tap stop - recording stops, control buttons appear
-- Play button plays recording back
-- Trash button discards recording
-- Checkmark shows save confirmation
+- Tap "Read a Script" on Create tab → full-screen script browser
+- Category chips filter the script list (All, Motivation, Gentle, Energetic, Mindful)
+- Script cards show title, preview text (2 lines), duration, and category badge
+- Tap a script → opens recording view with full script text
+- Record button works with pulsing animation while recording
+- After recording: Play, Discard, Save buttons appear
+- Back button returns to script list
+
+---
+
+### Task 12: Build AI TTS interface
+**Status:** Complete
+**Date:** 2026-01-26
+
+**Changes made:**
+1. Updated `/app/(tabs)/create.tsx` - AITTSScreen:
+   - Full-screen interface for AI voice generation
+   - Multi-line text input with character counter (500 max)
+   - Placeholder text with example message
+   - Voice gender selection (Female/Male) with visual toggle buttons
+   - Voice style selection (Warm, Energetic, Calm, Professional) with descriptions
+   - Generate button (disabled until 10+ characters entered)
+   - Simulated API call with loading state
+   - Generated audio preview card with waveform icon
+   - Play/Pause, Discard, and Save controls for generated audio
+   - All voice settings changes clear previously generated audio
+   - Purple (#9B59B6) theme for AI Voice section
+
+2. Updated `/components/ui/icon-symbol.tsx`:
+   - Added `person.fill` icon mapping for gender selection
+   - Added `waveform` icon mapping for audio preview
+
+**Files modified:**
+- `app/(tabs)/create.tsx`
+- `components/ui/icon-symbol.tsx`
+
+**How to verify:**
+Run `npm start` and check:
+- Tap "AI Voice" on Create tab → full-screen TTS interface
+- Text input field accepts multi-line text with character counter
+- Gender toggle buttons switch between Female/Male (purple when selected)
+- Voice style grid shows 4 options with descriptions
+- Generate button disabled when text < 10 characters
+- Tapping Generate shows loading state, then "Audio Generated" alert
+- Generated audio section appears with Play/Discard/Save buttons
+- Changing text or voice settings clears generated audio
+- Save confirms and returns to Create selection

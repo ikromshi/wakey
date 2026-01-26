@@ -31,6 +31,8 @@ const MAPPING = {
   'checkmark': 'check',
   'xmark': 'close',
   'gear': 'settings',
+  'person.fill': 'person',
+  'waveform': 'graphic-eq',
 } as IconMapping;
 
 /**
