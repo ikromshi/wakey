@@ -1,18 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { Alert, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Alarm, formatAlarmTime, DayOfWeek } from '@/types/alarm';
-import { Colors, Spacing, BorderRadius, Shadows, Typography } from '@/constants/theme';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { Alarm, DayOfWeek, formatAlarmTime } from '@/types/alarm';
 
 interface AlarmCardProps {
   alarm: Alarm;
   onToggle: (id: string) => void;
   onPress?: (alarm: Alarm) => void;
+  onDelete?: (id: string) => void;
 }
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -46,34 +42,32 @@ function formatRepeatDays(days: DayOfWeek[]): string {
   return sorted.map(d => DAY_LABELS[d]).join(', ');
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-export function AlarmCard({ alarm, onToggle, onPress }: AlarmCardProps) {
-  const scale = useSharedValue(1);
+export function AlarmCard({ alarm, onToggle, onPress, onDelete }: AlarmCardProps) {
   const timeDisplay = formatAlarmTime(alarm.hour, alarm.minute);
   const repeatDisplay = formatRepeatDays(alarm.repeatDays);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
 
   const handlePress = () => {
     onPress?.(alarm);
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Alarm',
+      `Are you sure you want to delete "${alarm.label}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => onDelete?.(alarm.id),
+        },
+      ]
+    );
+  };
+
   return (
-    <AnimatedPressable
-      style={[styles.container, animatedStyle, !alarm.enabled && styles.containerDisabled]}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+    <Pressable
+      style={[styles.container, !alarm.enabled && styles.containerDisabled]}
       onPress={handlePress}
     >
       <View style={styles.content}>
@@ -88,18 +82,27 @@ export function AlarmCard({ alarm, onToggle, onPress }: AlarmCardProps) {
             {repeatDisplay}
           </Text>
         </View>
-        <Switch
-          value={alarm.enabled}
-          onValueChange={() => onToggle(alarm.id)}
-          trackColor={{
-            false: Colors.disabled,
-            true: Colors.primary
-          }}
-          thumbColor={Colors.card}
-          ios_backgroundColor={Colors.disabled}
-        />
+
+        {/* Updated Action Container */}
+        <View style={styles.actions}>
+          <Switch
+            value={alarm.enabled}
+            onValueChange={() => onToggle(alarm.id)}
+            trackColor={{
+              false: Colors.disabled,
+              true: Colors.primary
+            }}
+            thumbColor={Colors.card}
+            ios_backgroundColor={Colors.disabled}
+          />
+          {onDelete && (
+            <Pressable style={styles.deleteButton} onPress={handleDelete}>
+              <Text style={styles.deleteText}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 
@@ -143,5 +146,21 @@ const styles = StyleSheet.create({
   },
   textDisabled: {
     color: Colors.textLight,
+  },
+  actions: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    // Increase this value to drop the button further down
+    gap: Spacing.lg, 
+  },
+  deleteButton: {
+    // You can also use marginTop for more precise control
+    marginTop: 4, 
+    paddingVertical: Spacing.xs,
+  },
+  deleteText: {
+    color: Colors.danger,
+    fontFamily: 'Quicksand-Medium',
+    fontSize: 14,
   },
 });

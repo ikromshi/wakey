@@ -3,10 +3,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+  FadeIn
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -68,28 +65,12 @@ interface TemplateCardProps {
 }
 
 function TemplateCard({ template, isPlaying, onPlay, onStop, onSelect }: TemplateCardProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
-
   const iconName = getTemplateIcon(template.icon);
   const iconColor = getIconColor(template.icon);
 
   return (
-    <AnimatedPressable
-      style={[styles.templateCard, animatedStyle]}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+    <Pressable
+      style={styles.templateCard}
       onPress={onSelect}
     >
       <View style={[styles.templateIcon, { backgroundColor: iconColor + '20' }]}>
@@ -130,7 +111,7 @@ function TemplateCard({ template, isPlaying, onPlay, onStop, onSelect }: Templat
           color={Colors.card}
         />
       </Pressable>
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 

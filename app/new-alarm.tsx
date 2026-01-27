@@ -1,6 +1,6 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Audio } from 'expo-av';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Platform,
@@ -18,6 +18,7 @@ import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/
 import { useAlarms } from '@/context/AlarmContext';
 import { useAudioSelection } from '@/context/AudioSelectionContext';
 import { AudioSource, DEFAULT_ALARM, DayOfWeek } from '@/types/alarm';
+import { TEMPLATES } from '@/data/templates';
 
 const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'sun', label: 'S' },
@@ -45,7 +46,8 @@ const TEMPLATE_AUDIO_FILES: Record<string, any> = {
 };
 
 export default function NewAlarmScreen() {
-  const { addAlarm } = useAlarms();
+  const { alarmId } = useLocalSearchParams<{ alarmId?: string }>();
+  const { alarms, addAlarm, updateAlarm } = useAlarms();
   const {
     pendingSelection,
     clearPendingSelection,
@@ -54,6 +56,9 @@ export default function NewAlarmScreen() {
     clearDraftAlarmState,
   } = useAudioSelection();
 
+  const isEditing = !!alarmId;
+  const existingAlarm = isEditing ? alarms.find(a => a.id === alarmId) : null;
+
   // Initialize with current time rounded to next 5 minutes
   const getDefaultTime = () => {
     const now = new Date();
@@ -61,11 +66,35 @@ export default function NewAlarmScreen() {
     return now;
   };
 
-  const [time, setTime] = useState(getDefaultTime);
-  const [label, setLabel] = useState('');
-  const [repeatDays, setRepeatDays] = useState<DayOfWeek[]>([]);
-  const [audioSource, setAudioSource] = useState<AudioSource>({ type: 'default' });
-  const [audioName, setAudioName] = useState<string>('Default Sound');
+  // Helper to get audio name from source
+  const getAudioNameFromSource = (source: AudioSource): string => {
+    if (source.type === 'default') return 'Default Sound';
+    if (source.type === 'recording') return 'Custom Recording';
+    if (source.type === 'tts') return 'AI Generated';
+    if (source.type === 'template' && source.templateId) {
+      const template = TEMPLATES.find(t => t.id === source.templateId);
+      return template?.title || 'Template';
+    }
+    return 'Default Sound';
+  };
+
+  const [time, setTime] = useState(() => {
+    if (existingAlarm) {
+      const t = new Date();
+      t.setHours(existingAlarm.hour, existingAlarm.minute, 0, 0);
+      return t;
+    }
+    return getDefaultTime();
+  });
+  const [label, setLabel] = useState(existingAlarm?.label || '');
+  const [repeatDays, setRepeatDays] = useState<DayOfWeek[]>(existingAlarm?.repeatDays || []);
+  const [audioSource, setAudioSource] = useState<AudioSource>(existingAlarm?.audioSource || { type: 'default' });
+  const [audioName, setAudioName] = useState<string>(() => {
+    if (existingAlarm?.audioSource) {
+      return getAudioNameFromSource(existingAlarm.audioSource);
+    }
+    return 'Default Sound';
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const initializedRef = useRef(false);
@@ -184,22 +213,36 @@ export default function NewAlarmScreen() {
   };
 
   const handleSave = async () => {
-    await addAlarm({
-      ...DEFAULT_ALARM,
-      hour: time.getHours(),
-      minute: time.getMinutes(),
-      label: label.trim() || 'Alarm',
-      repeatDays,
-      audioSource,
-    });
-
     // Stop any playing audio
     if (soundRef.current) {
       await soundRef.current.stopAsync();
       await soundRef.current.unloadAsync();
     }
 
-    router.back();
+    if (isEditing && existingAlarm) {
+      // Update existing alarm
+      await updateAlarm({
+        id: alarmId!,
+        hour: time.getHours(),
+        minute: time.getMinutes(),
+        label: label.trim() || 'Alarm',
+        repeatDays,
+        audioSource,
+      });
+    } else {
+      // Create new alarm
+      await addAlarm({
+        ...DEFAULT_ALARM,
+        hour: time.getHours(),
+        minute: time.getMinutes(),
+        label: label.trim() || 'Alarm',
+        repeatDays,
+        audioSource,
+      });
+    }
+
+    // Navigate to Alarms tab
+    router.replace('/(tabs)');
   };
 
   const handleCancel = async () => {
@@ -235,7 +278,7 @@ export default function NewAlarmScreen() {
         <Pressable onPress={handleCancel} style={styles.headerButton}>
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>New Alarm</Text>
+        <Text style={styles.headerTitle}>{isEditing ? 'Edit Alarm' : 'New Alarm'}</Text>
         <Pressable onPress={handleSave} style={styles.headerButton}>
           <Text style={styles.saveText}>Save</Text>
         </Pressable>

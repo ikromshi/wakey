@@ -4,8 +4,9 @@ import { router } from 'expo-router';
 
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
 import { useAlarms } from '@/context/AlarmContext';
-import { SwipeableAlarmCard } from '@/components/alarm';
+import { AlarmCard } from '@/components/alarm';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Alarm } from '@/types/alarm';
 
 export default function AlarmsScreen() {
   const { sortedAlarms, toggleAlarm, deleteAlarm } = useAlarms();
@@ -13,6 +14,10 @@ export default function AlarmsScreen() {
 
   const handleAddAlarm = () => {
     router.push('/new-alarm');
+  };
+
+  const handleEditAlarm = (alarm: Alarm) => {
+    router.push({ pathname: '/new-alarm', params: { alarmId: alarm.id } });
   };
 
   return (
@@ -45,12 +50,12 @@ export default function AlarmsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {sortedAlarms.map(alarm => (
-            <SwipeableAlarmCard
+            <AlarmCard
               key={alarm.id}
               alarm={alarm}
               onToggle={toggleAlarm}
               onDelete={deleteAlarm}
-              onPress={(a) => console.log('Pressed alarm:', a.id)}
+              onPress={handleEditAlarm}
             />
           ))}
         </ScrollView>
