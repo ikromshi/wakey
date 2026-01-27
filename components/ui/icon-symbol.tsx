@@ -33,6 +33,14 @@ const MAPPING = {
   'gear': 'settings',
   'person.fill': 'person',
   'waveform': 'graphic-eq',
+  // Template icons
+  'sun.max.fill': 'wb-sunny',
+  'moon.fill': 'nightlight-round',
+  'leaf.fill': 'eco',
+  'drop.fill': 'water-drop',
+  'bell.fill': 'notifications',
+  'music.note': 'music-note',
+  'text.bubble.fill': 'chat',
 } as IconMapping;
 
 /**

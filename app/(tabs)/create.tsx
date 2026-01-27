@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,6 +13,8 @@ import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAudioRecorder, formatDuration } from '@/hooks/useAudioRecorder';
 import { SCRIPTS, SCRIPT_CATEGORIES, Script, getScriptsByCategory } from '@/data/scripts';
+import { saveAudioFile } from '@/services/audioStorage';
+import { useAudioSelection } from '@/context/AudioSelectionContext';
 
 type CreationPath = 'record' | 'script' | 'ai-tts' | null;
 
@@ -122,6 +125,8 @@ export default function CreateScreen() {
 // RECORD SCREEN - Full screen recording interface
 // ============================================
 function RecordScreen({ onBack }: { onBack: () => void }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const { setPendingSelection } = useAudioSelection();
   const {
     state,
     duration,
@@ -167,13 +172,26 @@ function RecordScreen({ onBack }: { onBack: () => void }) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (recordingUri) {
-      Alert.alert(
-        'Recording Saved',
-        'Your recording has been saved. You can now use it as an alarm sound.',
-        [{ text: 'OK', onPress: onBack }]
-      );
+      setIsSaving(true);
+      try {
+        const savedFile = await saveAudioFile(recordingUri, 'recording');
+        console.log('Recording saved to:', savedFile.uri);
+        // Set pending selection for New Alarm to pick up
+        setPendingSelection({
+          audioSource: { type: 'recording', uri: savedFile.uri },
+          audioName: 'Custom Recording',
+        });
+        // Dismiss all modals and open New Alarm fresh
+        router.dismissAll();
+        router.push('/new-alarm');
+      } catch (error) {
+        console.error('Failed to save recording:', error);
+        Alert.alert('Save Failed', 'Could not save the recording. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -391,6 +409,8 @@ function ScriptRecordView({
   onBack: () => void;
   onComplete: () => void;
 }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const { setPendingSelection } = useAudioSelection();
   const {
     state,
     duration,
@@ -435,13 +455,26 @@ function ScriptRecordView({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (recordingUri) {
-      Alert.alert(
-        'Recording Saved',
-        `Your reading of "${script.title}" has been saved!`,
-        [{ text: 'OK', onPress: onComplete }]
-      );
+      setIsSaving(true);
+      try {
+        const savedFile = await saveAudioFile(recordingUri, 'recording');
+        console.log('Script recording saved to:', savedFile.uri);
+        // Set pending selection for New Alarm to pick up
+        setPendingSelection({
+          audioSource: { type: 'recording', uri: savedFile.uri },
+          audioName: script.title,
+        });
+        // Dismiss all modals and open New Alarm fresh
+        router.dismissAll();
+        router.push('/new-alarm');
+      } catch (error) {
+        console.error('Failed to save recording:', error);
+        Alert.alert('Save Failed', 'Could not save the recording. Please try again.');
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -569,6 +602,7 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const { setPendingSelection } = useAudioSelection();
 
   const maxCharacters = 500;
   const charactersRemaining = maxCharacters - text.length;
@@ -609,11 +643,16 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
 
   const handleSave = () => {
     if (generatedAudio) {
-      Alert.alert(
-        'Audio Saved',
-        'Your AI-generated wake-up message has been saved! You can now use it as an alarm sound.',
-        [{ text: 'OK', onPress: onBack }]
-      );
+      // In production, generatedAudio would be a real URI from the TTS API
+      const audioName = `${gender === 'female' ? 'Female' : 'Male'} · ${VOICE_STYLES.find(s => s.id === voiceStyle)?.label}`;
+      // Set pending selection for New Alarm to pick up
+      setPendingSelection({
+        audioSource: { type: 'tts', uri: generatedAudio },
+        audioName,
+      });
+      // Dismiss all modals and open New Alarm fresh
+      router.dismissAll();
+      router.push('/new-alarm');
     }
   };
 

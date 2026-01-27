@@ -15,6 +15,8 @@ import 'react-native-reanimated';
 
 import { Colors } from '@/constants/theme';
 import { AlarmProvider } from '@/context/AlarmContext';
+import { AudioSelectionProvider } from '@/context/AudioSelectionContext';
+import { initializeNotifications, requestNotificationPermissions } from '@/services/alarmScheduler';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -51,6 +53,15 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Initialize notifications on startup
+  useEffect(() => {
+    const setupNotifications = async () => {
+      await initializeNotifications();
+      await requestNotificationPermissions();
+    };
+    setupNotifications();
+  }, []);
+
   // Don't render until fonts are loaded
   if (!fontsLoaded && !fontError) {
     return null;
@@ -59,20 +70,22 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AlarmProvider>
-        <ThemeProvider value={RiseAlarmTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="new-alarm"
-              options={{
-                presentation: 'modal',
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="dark" />
-        </ThemeProvider>
+        <AudioSelectionProvider>
+          <ThemeProvider value={RiseAlarmTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="new-alarm"
+                options={{
+                  presentation: 'modal',
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="dark" />
+          </ThemeProvider>
+        </AudioSelectionProvider>
       </AlarmProvider>
     </GestureHandlerRootView>
   );
