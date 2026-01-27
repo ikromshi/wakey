@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Audio } from 'expo-av';
+import { router } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Spacing, BorderRadius, Typography, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAlarms } from '@/context/AlarmContext';
 import { useAudioSelection } from '@/context/AudioSelectionContext';
-import { DEFAULT_ALARM, DayOfWeek, AudioSource } from '@/types/alarm';
+import { AudioSource, DEFAULT_ALARM, DayOfWeek } from '@/types/alarm';
 
 const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'sun', label: 'S' },
@@ -36,6 +36,12 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
 const TEMPLATE_AUDIO_FILES: Record<string, any> = {
   // These will be populated when audio files are added
   // Example: 'gentle-sunrise': require('../assets/audio/templates/gentle-sunrise.mp3'),
+  'motivational-start': require('../assets/audio/templates/motivational-start.mp3'),
+  'calm-awakening': require('../assets/audio/templates/calm-awakening.mp3'),
+  'positive-affirmations': require('../assets/audio/templates/positive-affirmations.mp3'),
+  'mindful-morning': require('../assets/audio/templates/mindful-morning.mp3'),
+  'energy-boost': require('../assets/audio/templates/energy-boost.mp3'),
+  'rich-mindset': require('../assets/audio/templates/rich-mindset.mp3'),
 };
 
 export default function NewAlarmScreen() {
@@ -79,6 +85,7 @@ export default function NewAlarmScreen() {
 
     // Apply pending audio selection
     if (pendingSelection) {
+      console.log('Applying pending selection:', JSON.stringify(pendingSelection));
       setAudioSource(pendingSelection.audioSource);
       setAudioName(pendingSelection.audioName);
       clearPendingSelection();
@@ -109,6 +116,11 @@ export default function NewAlarmScreen() {
   };
 
   const handlePlayPreview = async () => {
+    console.log('handlePlayPreview called');
+    console.log('audioSource:', JSON.stringify(audioSource));
+    console.log('audioSource.templateId:', audioSource.templateId);
+    console.log('TEMPLATE_AUDIO_FILES keys:', Object.keys(TEMPLATE_AUDIO_FILES));
+
     if (isPlaying && soundRef.current) {
       await soundRef.current.stopAsync();
       await soundRef.current.unloadAsync();
@@ -128,14 +140,18 @@ export default function NewAlarmScreen() {
       // Determine audio source
       if (audioSource.uri && audioSource.uri.startsWith('file://')) {
         // For recordings (file:// URIs)
+        console.log('Playing recording from URI:', audioSource.uri);
         audioToPlay = { uri: audioSource.uri };
       } else if (audioSource.templateId && TEMPLATE_AUDIO_FILES[audioSource.templateId]) {
         // For template audio (bundled assets via require())
+        console.log('Playing template:', audioSource.templateId);
         audioToPlay = TEMPLATE_AUDIO_FILES[audioSource.templateId];
       }
 
       if (!audioToPlay) {
         console.log('No audio to preview (default sound or missing template file)');
+        console.log('audioSource.templateId:', audioSource.templateId);
+        console.log('Has template?:', !!TEMPLATE_AUDIO_FILES[audioSource.templateId || '']);
         return;
       }
 

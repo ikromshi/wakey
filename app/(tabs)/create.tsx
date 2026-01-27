@@ -183,8 +183,7 @@ function RecordScreen({ onBack }: { onBack: () => void }) {
           audioSource: { type: 'recording', uri: savedFile.uri },
           audioName: 'Custom Recording',
         });
-        // Dismiss all modals and open New Alarm fresh
-        router.dismissAll();
+        // Open New Alarm modal
         router.push('/new-alarm');
       } catch (error) {
         console.error('Failed to save recording:', error);
@@ -466,8 +465,7 @@ function ScriptRecordView({
           audioSource: { type: 'recording', uri: savedFile.uri },
           audioName: script.title,
         });
-        // Dismiss all modals and open New Alarm fresh
-        router.dismissAll();
+        // Open New Alarm modal
         router.push('/new-alarm');
       } catch (error) {
         console.error('Failed to save recording:', error);
@@ -650,8 +648,7 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
         audioSource: { type: 'tts', uri: generatedAudio },
         audioName,
       });
-      // Dismiss all modals and open New Alarm fresh
-      router.dismissAll();
+      // Open New Alarm modal
       router.push('/new-alarm');
     }
   };

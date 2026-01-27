@@ -1,23 +1,34 @@
-import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  FadeIn,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useAudioSelection } from '@/context/AudioSelectionContext';
 import {
+  AudioTemplate,
   TEMPLATES,
   TEMPLATE_CATEGORIES,
-  AudioTemplate,
   getTemplatesByCategory,
 } from '@/data/templates';
-import { useAudioSelection } from '@/context/AudioSelectionContext';
+
+// Template audio files mapping (must match IDs in templates.ts)
+const TEMPLATE_AUDIO_FILES: Record<string, any> = {
+  'motivational-start': require('../../assets/audio/templates/motivational-start.mp3'),
+  'calm-awakening': require('../../assets/audio/templates/calm-awakening.mp3'),
+  'positive-affirmations': require('../../assets/audio/templates/positive-affirmations.mp3'),
+  'mindful-morning': require('../../assets/audio/templates/mindful-morning.mp3'),
+  'energy-boost': require('../../assets/audio/templates/energy-boost.mp3'),
+  'rich-mindset': require('../../assets/audio/templates/rich-mindset.mp3'),
+};
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -127,24 +138,67 @@ export default function TemplatesScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const { setPendingSelection } = useAudioSelection();
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const filteredTemplates = getTemplatesByCategory(selectedCategory);
 
-  const handlePlay = (template: AudioTemplate) => {
-    // In production, this would actually play the audio
-    console.log('Playing template:', template.id);
-    setPlayingId(template.id);
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
 
-    // Simulate playback ending after the duration
-    const durationParts = template.duration.split(':');
-    const seconds = parseInt(durationParts[0]) * 60 + parseInt(durationParts[1]);
-    setTimeout(() => {
-      setPlayingId(prev => prev === template.id ? null : prev);
-    }, seconds * 1000);
+  const handlePlay = async (template: AudioTemplate) => {
+    // Stop any currently playing audio first
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
+
+    // Check if we have audio for this template
+    const audioFile = TEMPLATE_AUDIO_FILES[template.id];
+    if (!audioFile) {
+      console.log('No audio file for template:', template.id);
+      Alert.alert('Audio Not Available', 'This template audio is not yet available.');
+      return;
+    }
+
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        audioFile,
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingId(null);
+          }
+        }
+      );
+
+      soundRef.current = sound;
+      setPlayingId(template.id);
+      console.log('Playing template:', template.id);
+    } catch (error) {
+      console.error('Error playing template audio:', error);
+      Alert.alert('Playback Error', 'Could not play this audio.');
+    }
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     console.log('Stopping playback');
+    if (soundRef.current) {
+      await soundRef.current.stopAsync();
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
     setPlayingId(null);
   };
 
@@ -243,7 +297,7 @@ export default function TemplatesScreen() {
           style={styles.nowPlayingBar}
         >
           <View style={styles.nowPlayingContent}>
-            <IconSymbol name="play.fill" size={16} color={Colors.card} />
+            {/* <IconSymbol name="play.fill" size={16} color={Colors.card} /> */}
             <Text style={styles.nowPlayingText}>
               Now playing: {TEMPLATES.find(t => t.id === playingId)?.title}
             </Text>
