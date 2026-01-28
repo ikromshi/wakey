@@ -11,7 +11,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -42,6 +48,9 @@ export default function OnboardingScreen() {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
+  // Shared value for smooth scroll tracking
+  const scrollX = useSharedValue(0);
+
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
@@ -53,15 +62,18 @@ export default function OnboardingScreen() {
 
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
+    // Update shared value for smooth animation
+    scrollX.value = offsetX;
+
+    // Update state only when page changes (for button text, etc.)
     const page = Math.round(offsetX / SCREEN_WIDTH);
     if (page !== currentPage && page >= 0 && page < TOTAL_PAGES) {
       setCurrentPage(page);
     }
-  }, [currentPage]);
+  }, [currentPage, scrollX]);
 
   const goToPage = useCallback((page: number) => {
     scrollViewRef.current?.scrollTo({ x: page * SCREEN_WIDTH, animated: true });
-    setCurrentPage(page);
   }, []);
 
   const handleNext = useCallback(() => {
@@ -130,8 +142,8 @@ export default function OnboardingScreen() {
     // Mark onboarding complete
     await markOnboardingComplete();
 
-    // Navigate to main app
-    router.replace('/(tabs)');
+    // Navigate to paywall
+    router.replace('/paywall');
   };
 
   const getButtonText = () => {
@@ -149,38 +161,32 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* Header */}
+      {/* Header - Always reserve space to prevent content shift */}
       <View style={styles.header}>
-        {currentPage > 0 ? (
-          <Pressable style={styles.headerButton} onPress={handleBack}>
-            <Text style={styles.backText}>Back</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.headerSpacer} />
-        )}
+        <Pressable
+          style={[styles.headerButton, currentPage === 0 && styles.headerButtonHidden]}
+          onPress={handleBack}
+          disabled={currentPage === 0}
+        >
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
 
-        {currentPage < TOTAL_PAGES - 1 && currentPage > 0 ? (
-          <Pressable style={styles.headerButton} onPress={handleSkip}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.headerSpacer} />
-        )}
+        <Pressable
+          style={[
+            styles.headerButton,
+            (currentPage === 0 || currentPage === TOTAL_PAGES - 1) && styles.headerButtonHidden,
+          ]}
+          onPress={handleSkip}
+          disabled={currentPage === 0 || currentPage === TOTAL_PAGES - 1}
+        >
+          <Text style={styles.skipText}>Skip</Text>
+        </Pressable>
       </View>
 
-      {/* Progress Dots */}
+      {/* Progress Dots - Animated */}
       <View style={styles.dotsContainer}>
         {Array.from({ length: TOTAL_PAGES }).map((_, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              styles.dot,
-              {
-                width: index === currentPage ? 24 : 8,
-                backgroundColor: index === currentPage ? Colors.primary : Colors.border,
-              },
-            ]}
-          />
+          <ProgressDot key={index} index={index} scrollX={scrollX} />
         ))}
       </View>
 
@@ -238,6 +244,41 @@ export default function OnboardingScreen() {
 }
 
 // ============================================
+// Progress Dot Component with Smooth Animation
+// ============================================
+
+function ProgressDot({ index, scrollX }: { index: number; scrollX: SharedValue<number> }) {
+  const animatedStyle = useAnimatedStyle(() => {
+    const inputRange = [
+      (index - 1) * SCREEN_WIDTH,
+      index * SCREEN_WIDTH,
+      (index + 1) * SCREEN_WIDTH,
+    ];
+
+    const width = interpolate(
+      scrollX.value,
+      inputRange,
+      [8, 24, 8],
+      'clamp'
+    );
+
+    const backgroundColor = interpolate(
+      scrollX.value,
+      inputRange,
+      [0, 1, 0],
+      'clamp'
+    );
+
+    return {
+      width: withSpring(width, { damping: 20, stiffness: 200 }),
+      backgroundColor: backgroundColor > 0.5 ? Colors.primary : Colors.border,
+    };
+  });
+
+  return <Animated.View style={[styles.dot, animatedStyle]} />;
+}
+
+// ============================================
 // Page Components
 // ============================================
 
@@ -257,13 +298,12 @@ function WelcomePage() {
         <FeatureItem icon="mic.fill" text="Personalized wake-up messages" />
         <FeatureItem icon="waveform" text="AI-generated motivational voices" />
         <FeatureItem icon="moon.fill" text="Gentle, stress-free mornings" />
-        {/* <FeatureItem icon="heart.fill" text="Custom recordings from loved ones" /> */}
       </View>
     </View>
   );
 }
 
-function FeaturesPage() {44444
+function FeaturesPage() {
   return (
     <View style={styles.pageContent}>
       <Text style={styles.title}>Create Your Perfect Wake-Up</Text>
@@ -400,7 +440,7 @@ function CompletePage() {
   return (
     <View style={styles.pageContent}>
       <View style={styles.completeIconCircle}>
-        <IconSymbol name="checkmark" size={48} color={Colors.card} />
+        <IconSymbol name="checkmark" size={32} color={Colors.card} />
       </View>
 
       <Text style={styles.headline}>You're All Set!</Text>
@@ -472,10 +512,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
+    height: 44, // Fixed height to prevent content shift
   },
   headerButton: {
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.sm,
+    minWidth: 60,
+  },
+  headerButtonHidden: {
+    opacity: 0,
   },
   backText: {
     fontFamily: 'Quicksand-Medium',
@@ -486,9 +531,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Quicksand-Medium',
     fontSize: Typography.body.fontSize,
     color: Colors.textLight,
-  },
-  headerSpacer: {
-    width: 60,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -749,8 +791,8 @@ const styles = StyleSheet.create({
 
   // Complete page
   completeIconCircle: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     borderRadius: 50,
     backgroundColor: Colors.success,
     justifyContent: 'center',

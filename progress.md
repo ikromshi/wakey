@@ -42,7 +42,7 @@
 
 ### Paywall & Monetization
 - [x] Task 25: Install and configure Superwall SDK
-- [ ] Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
+- [x] Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
 - [ ] Task 27: Implement subscription state management
 - [ ] Task 28: Gate AI Voice feature behind Full plan
 - [ ] Task 29: Add upgrade prompts and restore purchases
@@ -796,6 +796,62 @@ To use Superwall in production:
 3. Create paywall templates in the dashboard
 4. Add placements to campaigns
 5. Copy API keys to `.env` file
+
+---
+
+### Task 26: Create paywall UI with Basic and Full plans
+**Status:** Complete
+**Date:** 2026-01-28
+
+**Changes made:**
+1. Created `/components/paywall/FeatureList.tsx`:
+   - Reusable component for displaying feature lists
+   - Green checkmark for included features
+   - Gray X for excluded features
+   - Support for highlighted features
+   - Compact mode for use in plan cards
+
+2. Created `/components/paywall/PlanCard.tsx`:
+   - Individual plan card component
+   - Animated press feedback (squish effect)
+   - Badge support (e.g., "Best Value")
+   - Configurable accent color
+   - Loading state for button
+
+3. Created `/app/paywall.tsx`:
+   - Full paywall screen with two plan options
+   - **Basic Plan ($4.99/month)**: Unlimited alarms, voice recording, script reading, audio templates
+   - **Full Plan ($9.99/month)**: Everything in Basic + AI voices, unlimited AI generations, priority support
+   - Full plan highlighted as "Best Value" with purple accent
+   - Skip option to continue without subscribing
+   - Restore Purchases link
+   - Terms of Service and Privacy Policy links
+   - Mock purchase flow for development/Expo Go
+
+4. Updated `/app/_layout.tsx`:
+   - Added paywall route to Stack navigator
+
+5. Updated `/app/onboarding/index.tsx`:
+   - Changed completion navigation to go to paywall instead of directly to tabs
+
+**Files created:**
+- `components/paywall/FeatureList.tsx`
+- `components/paywall/PlanCard.tsx`
+- `components/paywall/index.ts`
+- `app/paywall.tsx`
+
+**Files modified:**
+- `app/_layout.tsx`
+- `app/onboarding/index.tsx`
+
+**How to verify:**
+Run `npm start` and check:
+- Complete onboarding to see paywall
+- Two plan cards displayed (Full highlighted)
+- Feature lists show checkmarks/X marks
+- Buttons show loading state on press
+- Skip navigates to main app
+- Restore Purchases shows alert
 
 ---
 

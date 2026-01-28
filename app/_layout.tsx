@@ -96,6 +96,13 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              <Stack.Screen
+                name="paywall"
+                options={{
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
             </Stack>
             <StatusBar style="dark" />
           </ThemeProvider>
