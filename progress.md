@@ -43,7 +43,7 @@
 ### Paywall & Monetization
 - [x] Task 25: Install and configure Superwall SDK
 - [x] Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
-- [ ] Task 27: Implement subscription state management
+- [x] Task 27: Implement subscription state management
 - [ ] Task 28: Gate AI Voice feature behind Full plan
 - [ ] Task 29: Add upgrade prompts and restore purchases
 
@@ -852,6 +852,60 @@ Run `npm start` and check:
 - Buttons show loading state on press
 - Skip navigates to main app
 - Restore Purchases shows alert
+
+---
+
+### Task 27: Implement subscription state management
+**Status:** Complete
+**Date:** 2026-01-28
+
+**Changes made:**
+1. Created `/types/subscription.ts`:
+   - `PlanType`: 'none' | 'basic' | 'full'
+   - `SubscriptionStatus`: 'active' | 'expired' | 'cancelled' | 'grace_period' | 'none'
+   - `Feature`: Feature identifiers for gating
+   - `SubscriptionState`: Full subscription state interface
+   - `FEATURE_ACCESS`: Mapping of plan to available features
+
+2. Created `/context/SubscriptionContext.tsx`:
+   - `SubscriptionProvider`: Context provider with reducer-based state
+   - Persists subscription to AsyncStorage
+   - Syncs with Superwall subscription status
+   - Grace period handling (3 days after expiration)
+   - `useSubscription()`: Full subscription context hook
+   - `useCanUseFeature(feature)`: Check specific feature access
+   - `useCanUseAIVoice()`: Quick check for AI voice access
+
+3. Created `/hooks/useSubscription.ts`:
+   - Re-exports hooks for convenient imports
+   - Exports subscription types
+
+4. Updated `/app/_layout.tsx`:
+   - Wrapped app with `SubscriptionProvider`
+
+**Subscription state includes:**
+- `plan`: Current plan type
+- `isSubscribed`: Whether user has active subscription
+- `status`: Detailed subscription status
+- `canUseAIVoice`: Quick access for AI voice feature
+- `expirationDate`: When subscription expires
+- `isLoading`: Loading state
+- `lastSyncedAt`: Last sync timestamp
+
+**Available actions:**
+- `refreshSubscription()`: Sync with Superwall
+- `handlePurchase(plan, productId)`: Process purchase
+- `handleExpiration()`: Handle subscription expiration
+- `canUseFeature(feature)`: Check feature access
+- `clearSubscription()`: Clear for testing/logout
+
+**Files created:**
+- `types/subscription.ts`
+- `context/SubscriptionContext.tsx`
+- `hooks/useSubscription.ts`
+
+**Files modified:**
+- `app/_layout.tsx`
 
 ---
 

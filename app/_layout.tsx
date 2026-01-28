@@ -16,6 +16,7 @@ import 'react-native-reanimated';
 import { Colors } from '@/constants/theme';
 import { AlarmProvider } from '@/context/AlarmContext';
 import { AudioSelectionProvider } from '@/context/AudioSelectionContext';
+import { SubscriptionProvider } from '@/context/SubscriptionContext';
 import { initializeNotifications, requestNotificationPermissions } from '@/services/alarmScheduler';
 import { initializeSuperwall } from '@/services/superwall';
 
@@ -75,39 +76,41 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AlarmProvider>
-        <AudioSelectionProvider>
-          <ThemeProvider value={RiseAlarmTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="onboarding"
-                options={{
-                  headerShown: false,
-                  animation: 'fade',
-                }}
-              />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="new-alarm"
-                options={{
-                  presentation: 'modal',
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              <Stack.Screen
-                name="paywall"
-                options={{
-                  headerShown: false,
-                  animation: 'fade',
-                }}
-              />
-            </Stack>
-            <StatusBar style="dark" />
-          </ThemeProvider>
-        </AudioSelectionProvider>
-      </AlarmProvider>
+      <SubscriptionProvider>
+        <AlarmProvider>
+          <AudioSelectionProvider>
+            <ThemeProvider value={RiseAlarmTheme}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{
+                    headerShown: false,
+                    animation: 'fade',
+                  }}
+                />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="new-alarm"
+                  options={{
+                    presentation: 'modal',
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                <Stack.Screen
+                  name="paywall"
+                  options={{
+                    headerShown: false,
+                    animation: 'fade',
+                  }}
+                />
+              </Stack>
+              <StatusBar style="dark" />
+            </ThemeProvider>
+          </AudioSelectionProvider>
+        </AlarmProvider>
+      </SubscriptionProvider>
     </GestureHandlerRootView>
   );
 }
