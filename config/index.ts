@@ -12,3 +12,6 @@ export const ELEVENLABS_API_KEY = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY || 
 export function isElevenLabsConfigured(): boolean {
   return ELEVENLABS_API_KEY.length > 0;
 }
+
+// Re-export Superwall configuration
+export * from './superwall';

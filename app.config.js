@@ -58,6 +58,12 @@ export default {
     extra: {
       // Environment variables accessible via Constants.expoConfig.extra
       elevenlabsApiKey: process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY,
+      // Superwall API keys for paywall management
+      superwallApiKeyIos: process.env.EXPO_PUBLIC_SUPERWALL_API_KEY_IOS,
+      superwallApiKeyAndroid: process.env.EXPO_PUBLIC_SUPERWALL_API_KEY_ANDROID,
+      // Supabase configuration (for future auth/database)
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     },
   },
 };

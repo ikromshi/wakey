@@ -17,6 +17,7 @@ import { Colors } from '@/constants/theme';
 import { AlarmProvider } from '@/context/AlarmContext';
 import { AudioSelectionProvider } from '@/context/AudioSelectionContext';
 import { initializeNotifications, requestNotificationPermissions } from '@/services/alarmScheduler';
+import { initializeSuperwall } from '@/services/superwall';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -62,6 +63,11 @@ export default function RootLayout() {
     setupNotifications();
   }, []);
 
+  // Initialize Superwall for paywall management
+  useEffect(() => {
+    initializeSuperwall();
+  }, []);
+
   // Don't render until fonts are loaded
   if (!fontsLoaded && !fontError) {
     return null;
@@ -72,7 +78,15 @@ export default function RootLayout() {
       <AlarmProvider>
         <AudioSelectionProvider>
           <ThemeProvider value={RiseAlarmTheme}>
-            <Stack>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="onboarding"
+                options={{
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen
                 name="new-alarm"

@@ -1,36 +1,58 @@
 # RiseAlarm Development Progress
 
-## Task Breakdown (18 tasks total)
+## Task Breakdown (34 tasks total)
 
-### Foundation & Setup
+### Foundation & Setup (Complete)
 - [x] Task 1: Update theme/colors
 - [x] Task 2: Set up custom fonts (Quicksand)
 - [x] Task 3: Configure 3-tab navigation (Alarms, Create, Templates)
 
-### Home Screen (Alarms)
+### Home Screen - Alarms (Complete)
 - [x] Task 4: Create Alarm data types & context
 - [x] Task 5: Build AlarmCard component
 - [x] Task 6: Build Alarms list screen
 - [x] Task 7: Add swipe-to-delete
 - [x] Task 8: Add "New Alarm" flow (time picker)
 
-### Create Page
+### Create Page (Complete)
 - [x] Task 9: Build Create page layout
 - [x] Task 10: Implement audio recording (+ UX redesign)
 - [x] Task 11: Build Script reading feature
 - [x] Task 12: Build AI TTS interface
 
-### Templates Page
+### Templates Page (Complete)
 - [x] Task 13: Build Templates page layout
 - [x] Task 14: Build Template list items
 - [x] Task 15: Add audio playback
 
-### Data & Persistence
+### Data & Persistence (Complete)
 - [x] Task 16: Implement local storage (AsyncStorage)
 - [x] Task 17: Implement audio file storage
 
-### Alarm Functionality
+### Alarm Functionality (Complete)
 - [x] Task 18: Set up alarm scheduling (Notifee)
+
+### Onboarding Experience
+- [x] Task 19: Set up onboarding navigation flow
+- [x] Task 20: Build Welcome screen (intro + value proposition)
+- [x] Task 21: Build Feature Discovery screen (interactive demo)
+- [x] Task 22: Build AI Voice Preview screen (try the voices)
+- [x] Task 23: Build Wake-up Styles screen (personalization)
+- [x] Task 24: Complete onboarding flow and transition
+
+### Paywall & Monetization
+- [x] Task 25: Install and configure Superwall SDK
+- [ ] Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
+- [ ] Task 27: Implement subscription state management
+- [ ] Task 28: Gate AI Voice feature behind Full plan
+- [ ] Task 29: Add upgrade prompts and restore purchases
+
+### Authentication & Database
+- [ ] Task 30: Set up Supabase project and configuration
+- [ ] Task 31: Create database schema (users, subscriptions)
+- [ ] Task 32: Build sign-up screen (name, email, password)
+- [ ] Task 33: Implement auth state management and session persistence
+- [ ] Task 34: Connect subscription data to user accounts
 
 ---
 
@@ -704,20 +726,659 @@ Run `npm start` and check:
 
 ---
 
-## All Tasks Complete!
+## Phase 1 Complete (Tasks 1-18)
 
-All 18 tasks have been completed. The RiseAlarm app now has:
+All 18 foundation tasks have been completed. The RiseAlarm app now has:
 
 1. **UI Foundation:** Custom theme, Quicksand fonts, 3-tab navigation
-2. **Alarms Screen:** List view, cards with toggle, swipe-to-delete, new alarm modal
-3. **Create Screen:** Three audio creation paths (Record, Script, AI TTS)
-4. **Templates Screen:** Browsable audio templates with category filter
+2. **Alarms Screen:** List view, cards with toggle, delete button, edit functionality
+3. **Create Screen:** Three audio creation paths (Record, Script, AI TTS with ElevenLabs)
+4. **Templates Screen:** Browsable audio templates with category filter and playback
 5. **Data Persistence:** AsyncStorage for alarms, file system for audio files
 6. **Alarm Scheduling:** Notifee notifications with snooze support
 
-### Next Steps (Future Development)
-- Integrate actual TTS API (ElevenLabs or OpenAI)
-- Add audio file playback for alarm sounds
-- Implement alarm ringing screen with snooze/dismiss
-- Add settings screen
-- Build development for actual device testing
+---
+
+### Task 25: Install and configure Superwall SDK
+**Status:** Complete
+**Date:** 2026-01-28
+
+**Changes made:**
+1. Installed `@superwall/react-native-superwall` package
+
+2. Created `/config/superwall.ts`:
+   - Placement IDs: `onboarding_complete`, `ai_voice_attempt`, `settings_upgrade`, `premium_template`
+   - Product identifiers for Basic ($4.99) and Full ($9.99) monthly plans
+   - `PLAN_FEATURES` mapping for feature gating
+   - Helper functions: `canAccessFeature()`, `getProductId()`, `getPlanFromProduct()`
+
+3. Created `/services/superwall.ts`:
+   - `initializeSuperwall()` - initializes SDK with platform-specific API key
+   - `RiseAlarmSuperwallDelegate` - custom delegate for handling Superwall events
+   - `setUserAttributes()` - set user attributes for targeting
+   - `setUserId()` / `resetUserIdentity()` - user identification
+   - `registerPlacement()` - show paywalls for placements
+   - `showOnboardingPaywall()`, `showAIVoicePaywall()`, `showSettingsPaywall()` - convenience functions
+   - `checkSubscriptionStatus()` / `setSubscriptionStatus()` - subscription management
+   - `addSubscriptionListener()` - subscribe to status changes
+   - `getPresentationResult()` - check if paywall would show without presenting
+   - `dismissPaywall()` - dismiss currently presented paywall
+   - `getEntitlements()` - get user's active entitlements
+
+4. Updated `/app.config.js`:
+   - Added `superwallApiKeyIos` and `superwallApiKeyAndroid` to `extra`
+   - Added `supabaseUrl` and `supabaseAnonKey` for future auth setup
+
+5. Updated `/app/_layout.tsx`:
+   - Added `initializeSuperwall()` call on app startup
+
+6. Created `/.env.example`:
+   - Template with placeholders for all API keys (ElevenLabs, Superwall, Supabase)
+
+**New dependencies:**
+- `@superwall/react-native-superwall`
+
+**Files created:**
+- `config/superwall.ts`
+- `services/superwall.ts`
+- `.env.example`
+
+**Files modified:**
+- `app.config.js`
+- `app/_layout.tsx`
+- `config/index.ts`
+- `services/index.ts`
+
+**Next steps:**
+To use Superwall in production:
+1. Create a Superwall account at superwall.com
+2. Create an app and configure products (Basic/Full plans)
+3. Create paywall templates in the dashboard
+4. Add placements to campaigns
+5. Copy API keys to `.env` file
+
+---
+
+## Phase 2: Onboarding, Paywall & Authentication (Tasks 19-34)
+
+### Task 19: Set up onboarding navigation flow
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Create the navigation infrastructure for onboarding screens that shows only on first app launch.
+
+**Requirements:**
+1. Detect first launch using AsyncStorage flag (`@rise_alarm/onboarding_complete`)
+2. Create onboarding stack navigator with 5 screens
+3. Root layout checks flag and shows either onboarding or main app
+4. Smooth transitions between onboarding screens (horizontal slide)
+5. Progress indicator (dots) at bottom of onboarding screens
+6. Skip button option on non-critical screens
+
+**Files to create:**
+- `app/onboarding/_layout.tsx` - Onboarding stack navigator
+- `app/onboarding/index.tsx` - Redirects to first screen
+- `context/OnboardingContext.tsx` - Track onboarding state and progress
+- `hooks/useFirstLaunch.ts` - Check/set first launch flag
+
+**Files to modify:**
+- `app/_layout.tsx` - Conditional rendering based on onboarding status
+
+**Design notes:**
+- Use full-screen layouts (no tab bar during onboarding)
+- Consistent header style across all screens
+- Animated transitions (fade + slide)
+- Progress dots: filled = visited, outlined = upcoming
+
+---
+
+### Task 20: Build Welcome screen (intro + value proposition)
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Create an engaging welcome screen that introduces RiseAlarm and its core value proposition.
+
+**Requirements:**
+1. App logo/icon animation on entry
+2. Welcoming headline: "Wake Up Inspired" or similar
+3. 3-4 bullet points highlighting key benefits:
+   - "Personalized wake-up messages"
+   - "AI-generated motivational voices"
+   - "Gentle, stress-free mornings"
+   - "Custom recordings from your loved ones"
+4. Beautiful illustration or gradient background
+5. "Get Started" button to proceed
+6. Subtle animation (floating elements, gentle pulse)
+
+**Files to create:**
+- `app/onboarding/welcome.tsx`
+- `components/onboarding/WelcomeAnimation.tsx` (optional)
+
+**Design notes:**
+- Headspace-inspired: calm, friendly, approachable
+- Use brand colors (cream background, orange accents)
+- Large, readable typography
+- Illustration style: soft, rounded, minimal
+
+---
+
+### Task 21: Build Feature Discovery screen (interactive demo)
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Interactive screen showcasing key features with mini-demos users can tap through.
+
+**Requirements:**
+1. Carousel or swipeable cards showing 3 features:
+   - **Record Your Voice**: Show mic icon, brief description, mini waveform animation
+   - **Read a Script**: Show script cards preview, tap to see script categories
+   - **Audio Templates**: Show template cards, tap to hear a quick sample
+2. Each card has:
+   - Icon/illustration
+   - Feature name
+   - 1-2 sentence description
+   - Interactive element (tap to demo)
+3. "Try it" micro-interactions that don't require full setup
+4. Continue button appears after viewing all features (or skip)
+
+**Files to create:**
+- `app/onboarding/features.tsx`
+- `components/onboarding/FeatureCard.tsx`
+- `components/onboarding/FeatureCarousel.tsx`
+
+**Design notes:**
+- Cards should feel tappable and interactive
+- Use subtle haptic feedback on interactions
+- Animations: card flip, icon bounce, waveform pulse
+- Keep demos short (2-3 seconds max)
+
+---
+
+### Task 22: Build AI Voice Preview screen (try the voices)
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Let users experience the AI voices before committing. This is a key conversion moment.
+
+**Requirements:**
+1. Display all 4 AI voices (Nathaniel, Jessica, Milo, Jen) in a list
+2. Each voice card shows:
+   - Name and accent/style description
+   - Play button to hear sample
+   - Visual feedback when playing (waveform or pulse)
+3. Pre-generated sample clips (not live API calls)
+4. Highlight that this is a premium feature (subtle "Full Plan" badge)
+5. "These voices will wake you up gently" messaging
+6. Continue button to proceed
+
+**Files to create:**
+- `app/onboarding/voices.tsx`
+- `components/onboarding/VoicePreviewCard.tsx`
+
+**Assets needed:**
+- Pre-recorded sample clips for each voice (already in assets/audio/voices/)
+
+**Design notes:**
+- Make this screen feel premium and special
+- Purple accent color for AI voice section
+- Smooth audio transitions between voice samples
+- Only one voice plays at a time
+
+---
+
+### Task 23: Build Wake-up Styles screen (personalization)
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Help users identify their preferred wake-up style and show relevant content.
+
+**Requirements:**
+1. Question: "How do you like to wake up?"
+2. 4 selectable style cards:
+   - **Gentle & Calm**: "Ease into your day peacefully"
+   - **Motivated & Energized**: "Start with purpose and drive"
+   - **Mindful & Centered**: "Begin with clarity and focus"
+   - **Fun & Playful**: "Wake up with a smile"
+3. Users can select one (stored in AsyncStorage for personalization)
+4. Brief explanation of how selection affects recommendations
+5. "This helps us suggest the best sounds for you"
+6. Continue button (selection optional but encouraged)
+
+**Files to create:**
+- `app/onboarding/styles.tsx`
+- `components/onboarding/StyleCard.tsx`
+
+**Files to modify:**
+- `context/OnboardingContext.tsx` - Store selected style preference
+
+**Design notes:**
+- Each style card has distinct color/icon
+- Selection animation (border highlight, checkmark)
+- Cards arranged in 2x2 grid
+- Gentle encouragement, not forced choice
+
+---
+
+### Task 24: Complete onboarding flow and transition
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Final onboarding screen that transitions to paywall, with proper state management.
+
+**Requirements:**
+1. Final screen with:
+   - "You're all set!" or "Ready to Rise?" message
+   - Summary of what they'll get
+   - "Continue" button that goes to paywall
+2. Mark onboarding as complete in AsyncStorage
+3. Store user preferences (wake-up style) for personalization
+4. Smooth transition animation to paywall
+5. Handle back navigation (can go back through onboarding)
+6. Analytics hooks for tracking completion rate (optional)
+
+**Files to create:**
+- `app/onboarding/complete.tsx`
+
+**Files to modify:**
+- `context/OnboardingContext.tsx` - Mark complete, store preferences
+- `app/_layout.tsx` - Handle transition to paywall
+
+**Design notes:**
+- Celebratory but not over-the-top
+- Clear call-to-action
+- Reinforce value before showing prices
+
+---
+
+### Task 25: Install and configure Superwall SDK
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Set up Superwall for paywall management and A/B testing.
+
+**Requirements:**
+1. Install `@superwall/react-native-superwall`
+2. Create Superwall account and app
+3. Configure SDK in app entry point
+4. Set up API keys (dev and prod)
+5. Create placement identifiers for paywall triggers
+6. Test SDK initialization and event logging
+
+**Dependencies to install:**
+- `@superwall/react-native-superwall`
+
+**Files to create:**
+- `services/superwall.ts` - Superwall configuration and helpers
+- `config/superwall.ts` - Placement IDs and configuration
+
+**Files to modify:**
+- `app/_layout.tsx` - Initialize Superwall SDK
+- `.env.example` - Add Superwall API key placeholder
+
+**Superwall setup:**
+1. Create app in Superwall dashboard
+2. Define products: `basic_monthly` ($4.99), `full_monthly` ($9.99)
+3. Create paywall template
+4. Configure placement: `onboarding_complete`
+
+---
+
+### Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Design and implement a compelling paywall with two subscription tiers.
+
+**Requirements:**
+1. Two plan options displayed clearly:
+   - **Basic Plan - $4.99/month**:
+     - ✓ Unlimited alarms
+     - ✓ Voice recording
+     - ✓ Script reading
+     - ✓ All audio templates
+     - ✗ AI-generated voices (shown as locked)
+   - **Full Plan - $9.99/month** (recommended):
+     - ✓ Everything in Basic
+     - ✓ AI-generated voices (4 premium voices)
+     - ✓ Unlimited AI generations
+     - ✓ Priority support
+2. Visual hierarchy emphasizing Full plan (larger, highlighted)
+3. "Most Popular" or "Best Value" badge on Full plan
+4. Clear pricing display with "/month" suffix
+5. "Start Free Trial" or "Subscribe" button for each plan
+6. Terms of service and privacy policy links
+7. "Restore Purchases" link at bottom
+8. Close/skip option (if allowed)
+
+**Files to create:**
+- `app/paywall.tsx` - Paywall screen
+- `components/paywall/PlanCard.tsx` - Individual plan display
+- `components/paywall/FeatureList.tsx` - Feature comparison
+
+**Design notes:**
+- Clean, trustworthy design
+- Use green checkmarks, red X or gray for unavailable
+- Highlight savings or value proposition
+- Mobile-optimized layout
+
+---
+
+### Task 27: Implement subscription state management
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Create robust subscription state management that persists and syncs.
+
+**Requirements:**
+1. Create SubscriptionContext with:
+   - `plan`: 'none' | 'basic' | 'full'
+   - `isSubscribed`: boolean
+   - `canUseAIVoice`: boolean (true only for 'full')
+   - `expirationDate`: Date | null
+   - `isLoading`: boolean
+2. Persist subscription state locally (AsyncStorage)
+3. Sync with Superwall subscription status
+4. Handle subscription lifecycle events:
+   - Purchase completed
+   - Subscription renewed
+   - Subscription expired
+   - Subscription cancelled
+5. Provide hooks: `useSubscription()`, `useCanUseFeature(feature)`
+6. Grace period handling for expired subscriptions
+
+**Files to create:**
+- `context/SubscriptionContext.tsx`
+- `hooks/useSubscription.ts`
+- `types/subscription.ts`
+
+**Files to modify:**
+- `app/_layout.tsx` - Wrap with SubscriptionProvider
+- `services/superwall.ts` - Add subscription status listeners
+
+---
+
+### Task 28: Gate AI Voice feature behind Full plan
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Restrict AI voice generation to Full plan subscribers while keeping the feature visible.
+
+**Requirements:**
+1. AI Voice page shows all voices and UI to all users
+2. For Basic/Free users:
+   - "Generate with [Voice]" button replaced with "Upgrade to Full Plan"
+   - Tapping upgrade button shows paywall
+   - Voice samples still playable (to entice upgrade)
+   - Subtle "Full Plan Feature" badge on the page
+3. For Full plan users:
+   - Full functionality as implemented
+   - No upgrade prompts
+4. Handle edge cases:
+   - Subscription expires mid-session
+   - Network errors checking subscription
+
+**Files to modify:**
+- `app/(tabs)/create.tsx` - AITTSScreen component
+- Add subscription check before generation
+
+**Files to create:**
+- `components/paywall/UpgradeButton.tsx` - Reusable upgrade prompt
+
+**Design notes:**
+- Don't hide the feature, make it desirable
+- Upgrade button should be prominent but not annoying
+- Show what they're missing, not just blocking
+
+---
+
+### Task 29: Add upgrade prompts and restore purchases
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Implement upgrade flows and purchase restoration for returning users.
+
+**Requirements:**
+1. Upgrade prompt component that can be shown from:
+   - AI Voice page (when trying to generate)
+   - Settings page (if we add one)
+   - Programmatic triggers
+2. Restore purchases functionality:
+   - "Restore Purchases" button on paywall
+   - Also accessible from settings
+   - Shows loading state during restore
+   - Success/failure feedback
+3. Handle upgrade flow:
+   - Basic → Full upgrade path
+   - Show price difference or full price
+4. Receipt validation (handled by Superwall)
+5. Error handling for failed purchases
+
+**Files to create:**
+- `components/paywall/RestorePurchases.tsx`
+- `components/paywall/UpgradePrompt.tsx`
+
+**Files to modify:**
+- `app/paywall.tsx` - Add restore functionality
+- `services/superwall.ts` - Add restore and upgrade methods
+
+---
+
+### Task 30: Set up Supabase project and configuration
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Initialize Supabase backend for authentication and data storage.
+
+**Requirements:**
+1. Create Supabase project (or use existing)
+2. Install `@supabase/supabase-js`
+3. Configure Supabase client with:
+   - Project URL
+   - Anon key (public)
+   - Proper TypeScript types
+4. Set up environment variables
+5. Test connection from app
+6. Enable email authentication in Supabase dashboard
+
+**Dependencies to install:**
+- `@supabase/supabase-js`
+
+**Files to create:**
+- `services/supabase.ts` - Supabase client initialization
+- `config/supabase.ts` - Configuration constants
+
+**Files to modify:**
+- `.env.example` - Add Supabase URL and key placeholders
+- `app.config.js` - Add Supabase config to extra
+
+**Supabase dashboard setup:**
+1. Create new project
+2. Enable Email auth provider
+3. Configure email templates (optional)
+4. Set up Row Level Security policies
+
+---
+
+### Task 31: Create database schema (users, subscriptions)
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Design and implement database schema for users and subscription data.
+
+**Requirements:**
+1. `profiles` table:
+   - `id` (UUID, references auth.users)
+   - `name` (text)
+   - `email` (text)
+   - `created_at` (timestamp)
+   - `updated_at` (timestamp)
+   - `wake_up_style` (text, from onboarding)
+2. `subscriptions` table:
+   - `id` (UUID)
+   - `user_id` (UUID, references profiles)
+   - `plan` (text: 'basic' | 'full')
+   - `status` (text: 'active' | 'cancelled' | 'expired')
+   - `started_at` (timestamp)
+   - `expires_at` (timestamp)
+   - `superwall_subscription_id` (text, for reference)
+   - `created_at` (timestamp)
+   - `updated_at` (timestamp)
+3. Row Level Security:
+   - Users can only read/update their own profile
+   - Users can only read their own subscriptions
+4. Database triggers:
+   - Auto-create profile on user signup
+   - Update `updated_at` on changes
+
+**Files to create:**
+- `supabase/migrations/001_create_profiles.sql`
+- `supabase/migrations/002_create_subscriptions.sql`
+- `types/database.ts` - TypeScript types for tables
+
+---
+
+### Task 32: Build sign-up screen (name, email, password)
+**Status:** Pending
+**Estimated effort:** Medium
+
+**Goal:**
+Create a clean sign-up flow that collects minimal user information.
+
+**Requirements:**
+1. Sign-up form with:
+   - Name input (required)
+   - Email input (required, validated)
+   - Password input (required, min 8 chars)
+   - Show/hide password toggle
+2. Form validation:
+   - Real-time validation feedback
+   - Email format check
+   - Password strength indicator (optional)
+3. Submit button with loading state
+4. Error handling:
+   - Email already exists
+   - Network errors
+   - Invalid input
+5. Success flow → redirect to main app
+6. "Already have an account? Sign in" link
+7. Terms acceptance checkbox (optional)
+
+**Files to create:**
+- `app/auth/signup.tsx`
+- `app/auth/signin.tsx`
+- `app/auth/_layout.tsx`
+- `components/auth/AuthInput.tsx`
+- `components/auth/PasswordInput.tsx`
+
+**Design notes:**
+- Keep it simple and fast
+- Pre-fill email if available from paywall
+- Friendly error messages
+- Keyboard-aware layout
+
+---
+
+### Task 33: Implement auth state management and session persistence
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Create robust authentication state management with persistent sessions.
+
+**Requirements:**
+1. AuthContext with:
+   - `user`: User | null
+   - `session`: Session | null
+   - `isLoading`: boolean
+   - `isAuthenticated`: boolean
+   - `signUp(name, email, password)`
+   - `signIn(email, password)`
+   - `signOut()`
+   - `resetPassword(email)`
+2. Session persistence using Supabase's built-in storage
+3. Auto-refresh tokens before expiration
+4. Handle auth state changes:
+   - Sign in → fetch profile, sync subscription
+   - Sign out → clear local data, reset state
+   - Token refresh → seamless, no user action
+5. Protected route handling
+6. Deep link handling for email verification (optional)
+
+**Files to create:**
+- `context/AuthContext.tsx`
+- `hooks/useAuth.ts`
+
+**Files to modify:**
+- `app/_layout.tsx` - Wrap with AuthProvider, handle auth state
+- `services/supabase.ts` - Add auth helper functions
+
+---
+
+### Task 34: Connect subscription data to user accounts
+**Status:** Pending
+**Estimated effort:** High
+
+**Goal:**
+Link subscription purchases to user accounts for cross-device sync.
+
+**Requirements:**
+1. On successful purchase:
+   - Create/update subscription record in Supabase
+   - Link to authenticated user
+   - Store Superwall subscription ID
+2. On app launch (authenticated user):
+   - Fetch subscription from Supabase
+   - Reconcile with Superwall status
+   - Handle conflicts (local vs server)
+3. On sign-in on new device:
+   - Fetch user's subscription from Supabase
+   - Restore access to paid features
+   - Sync with local Superwall state
+4. Subscription status webhook (optional):
+   - Supabase Edge Function to receive Superwall webhooks
+   - Update subscription status in database
+5. Handle edge cases:
+   - User purchases before signing up
+   - Subscription transfers between accounts
+
+**Files to modify:**
+- `context/SubscriptionContext.tsx` - Add Supabase sync
+- `context/AuthContext.tsx` - Fetch subscription on sign-in
+- `services/superwall.ts` - Add user ID to purchases
+
+**Files to create:**
+- `services/subscriptionSync.ts` - Sync logic between Superwall and Supabase
+- `supabase/functions/subscription-webhook/index.ts` (optional)
+
+---
+
+## Implementation Order
+
+**Recommended sequence:**
+1. Tasks 19-24 (Onboarding) - Can be tested independently
+2. Tasks 30-31 (Supabase setup) - Backend foundation
+3. Tasks 25-27 (Superwall + subscription state) - Paywall core
+4. Tasks 32-33 (Auth) - User accounts
+5. Tasks 28-29 (Feature gating) - Connect paywall to features
+6. Task 34 (Sync) - Final integration
+
+**Why this order:**
+- Onboarding can be built and tested without backend
+- Supabase setup is needed before auth
+- Superwall can work without auth initially (anonymous users)
+- Auth builds on Supabase
+- Feature gating needs subscription state
+- Sync is the final piece connecting everything

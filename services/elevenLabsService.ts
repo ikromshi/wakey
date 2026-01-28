@@ -13,11 +13,11 @@ export interface Voice {
 
 export const VOICES: Voice[] = [
   {
-    id: 'jen',
-    voiceId: 'HzVnxqtdk9eqrcwfxD57',
-    name: 'Jen',
-    description: 'A soothing British voice, perfect for a gentle and peaceful start to your day.',
-    sampleFile: 'jen-sample.mp3',
+    id: 'nathaniel',
+    voiceId: 'AeRdCCKzvd23BpJoofzx',
+    name: 'Nathaniel',
+    description: 'A deep, mysterious, yet comforting British accent for a reflective and calm awakening.',
+    sampleFile: 'nathaniel-sample.mp3',
     speed: 1.0
   },
   {
@@ -37,11 +37,11 @@ export const VOICES: Voice[] = [
     speed: 1.0
   },
   {
-    id: 'nathaniel',
-    voiceId: 'AeRdCCKzvd23BpJoofzx',
-    name: 'Nathaniel',
-    description: 'A deep, mysterious, yet comforting British accent for a reflective and calm awakening.',
-    sampleFile: 'nathaniel-sample.mp3',
+    id: 'jen',
+    voiceId: 'HzVnxqtdk9eqrcwfxD57',
+    name: 'Jen',
+    description: 'A soothing British voice, perfect for a gentle and peaceful start to your day.',
+    sampleFile: 'jen-sample.mp3',
     speed: 1.0
   },
 ];
@@ -99,6 +99,7 @@ export async function generateTTS(
         use_speaker_boost: true,
         speed: voice.speed
       },
+      output_format: OUTPUT_FORMAT
     }),
   });
 

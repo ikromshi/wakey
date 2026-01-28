@@ -1,23 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, Alert, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Audio } from 'expo-av';
 import { router } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  FadeIn,
 } from 'react-native-reanimated';
-import { Audio } from 'expo-av';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useAudioRecorder, formatDuration } from '@/hooks/useAudioRecorder';
-import { SCRIPTS, SCRIPT_CATEGORIES, Script, getScriptsByCategory } from '@/data/scripts';
-import { saveAudioFile } from '@/services/audioStorage';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAudioSelection } from '@/context/AudioSelectionContext';
-import { VOICES, generateTTS, Voice } from '@/services/elevenLabsService';
-import { getSavedTTSAudio, saveTTSAudio, deleteTTSAudio, SavedTTSAudio } from '@/services/ttsStorage';
+import { SCRIPT_CATEGORIES, Script, getScriptsByCategory } from '@/data/scripts';
+import { formatDuration, useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { saveAudioFile } from '@/services/audioStorage';
+import { VOICES, Voice, generateTTS } from '@/services/elevenLabsService';
+import { SavedTTSAudio, deleteTTSAudio, getSavedTTSAudio, saveTTSAudio } from '@/services/ttsStorage';
 
 type CreationPath = 'record' | 'script' | 'ai-tts' | null;
 
