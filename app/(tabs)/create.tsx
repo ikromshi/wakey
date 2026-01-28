@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -8,6 +8,7 @@ import Animated, {
   withSpring,
   FadeIn,
 } from 'react-native-reanimated';
+import { Audio } from 'expo-av';
 
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -15,6 +16,8 @@ import { useAudioRecorder, formatDuration } from '@/hooks/useAudioRecorder';
 import { SCRIPTS, SCRIPT_CATEGORIES, Script, getScriptsByCategory } from '@/data/scripts';
 import { saveAudioFile } from '@/services/audioStorage';
 import { useAudioSelection } from '@/context/AudioSelectionContext';
+import { VOICES, generateTTS, Voice } from '@/services/elevenLabsService';
+import { getSavedTTSAudio, saveTTSAudio, deleteTTSAudio, SavedTTSAudio } from '@/services/ttsStorage';
 
 type CreationPath = 'record' | 'script' | 'ai-tts' | null;
 
@@ -577,34 +580,149 @@ function ScriptRecordView({
 // ============================================
 // AI TTS SCREEN - Text to speech interface
 // ============================================
-type VoiceGender = 'female' | 'male';
-type VoiceStyle = 'warm' | 'energetic' | 'calm' | 'professional';
 
-interface VoiceStyleOption {
-  id: VoiceStyle;
-  label: string;
-  description: string;
+// Voice sample audio files mapping
+// Place sample audio files in: assets/audio/voices/
+// Naming convention: {voiceId}-sample.mp3 (e.g., jen-sample.mp3)
+const VOICE_SAMPLES: Record<string, any> = {
+  'jen': require('../../assets/audio/voices/jen-sample.mp3'),
+  'jessica': require('../../assets/audio/voices/jessica-sample.mp3'),
+  'milo': require('../../assets/audio/voices/milo-sample.mp3'),
+  'nathaniel': require('../../assets/audio/voices/nathaniel-sample.mp3'),
+};
+
+interface GeneratedAudio {
+  uri: string;
+  voiceName: string;
+  text: string;
 }
-
-const VOICE_STYLES: VoiceStyleOption[] = [
-  { id: 'warm', label: 'Warm', description: 'Friendly and comforting' },
-  { id: 'energetic', label: 'Energetic', description: 'Upbeat and motivating' },
-  { id: 'calm', label: 'Calm', description: 'Soothing and peaceful' },
-  { id: 'professional', label: 'Professional', description: 'Clear and confident' },
-];
 
 function AITTSScreen({ onBack }: { onBack: () => void }) {
   const [text, setText] = useState('');
-  const [gender, setGender] = useState<VoiceGender>('female');
-  const [voiceStyle, setVoiceStyle] = useState<VoiceStyle>('warm');
+  const [selectedVoice, setSelectedVoice] = useState<Voice>(VOICES[0]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [generatedAudio, setGeneratedAudio] = useState<GeneratedAudio | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [savedAudios, setSavedAudios] = useState<SavedTTSAudio[]>([]);
+  const soundRef = useRef<Audio.Sound | null>(null);
   const { setPendingSelection } = useAudioSelection();
 
   const maxCharacters = 500;
   const charactersRemaining = maxCharacters - text.length;
-  const canGenerate = text.trim().length >= 10;
+  const canGenerate = text.trim().length >= 10 && selectedVoice;
+
+  // Load saved TTS audios on mount
+  useEffect(() => {
+    loadSavedAudios();
+  }, []);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const loadSavedAudios = async () => {
+    const audios = await getSavedTTSAudio();
+    setSavedAudios(audios);
+  };
+
+  const stopCurrentAudio = async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      } catch (e) {
+        // Ignore errors
+      }
+      soundRef.current = null;
+    }
+    setPlayingId(null);
+  };
+
+  const handlePlaySample = async (voice: Voice) => {
+    await stopCurrentAudio();
+
+    const sampleFile = VOICE_SAMPLES[voice.id];
+    if (!sampleFile) {
+      Alert.alert('Sample Not Available', 'Voice sample audio is not available yet.');
+      return;
+    }
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        sampleFile,
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingId(null);
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlayingId(`sample-${voice.id}`);
+    } catch (error) {
+      console.error('Failed to play sample:', error);
+      Alert.alert('Playback Error', 'Failed to play voice sample.');
+    }
+  };
+
+  const handlePlayGenerated = async () => {
+    if (!generatedAudio) return;
+
+    if (playingId === 'generated') {
+      await stopCurrentAudio();
+      return;
+    }
+
+    await stopCurrentAudio();
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: generatedAudio.uri },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingId(null);
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlayingId('generated');
+    } catch (error) {
+      console.error('Failed to play generated audio:', error);
+      Alert.alert('Playback Error', 'Failed to play generated audio.');
+    }
+  };
+
+  const handlePlaySaved = async (audio: SavedTTSAudio) => {
+    if (playingId === audio.id) {
+      await stopCurrentAudio();
+      return;
+    }
+
+    await stopCurrentAudio();
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audio.uri },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setPlayingId(null);
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlayingId(audio.id);
+    } catch (error) {
+      console.error('Failed to play saved audio:', error);
+      Alert.alert('Playback Error', 'Failed to play audio.');
+    }
+  };
 
   const handleGenerate = async () => {
     if (!canGenerate) {
@@ -612,57 +730,65 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
       return;
     }
 
+    await stopCurrentAudio();
     setIsGenerating(true);
     setGeneratedAudio(null);
 
-    // Simulate API call (replace with actual TTS API integration)
-    setTimeout(() => {
-      setIsGenerating(false);
-      setGeneratedAudio('generated-audio-placeholder');
-      Alert.alert(
-        'Audio Generated',
-        'Your AI voice has been generated! Tap Play to preview.',
-        [{ text: 'OK' }]
-      );
-    }, 2000);
-  };
+    try {
+      const result = await generateTTS(selectedVoice.voiceId, text.trim());
 
-  const handlePlay = () => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      // TODO: Stop audio playback
-    } else {
-      setIsPlaying(true);
-      // TODO: Play audio
-      // Simulate playback ending
-      setTimeout(() => setIsPlaying(false), 3000);
-    }
-  };
-
-  const handleSave = () => {
-    if (generatedAudio) {
-      // In production, generatedAudio would be a real URI from the TTS API
-      const audioName = `${gender === 'female' ? 'Female' : 'Male'} · ${VOICE_STYLES.find(s => s.id === voiceStyle)?.label}`;
-      // Set pending selection for New Alarm to pick up
-      setPendingSelection({
-        audioSource: { type: 'tts', uri: generatedAudio },
-        audioName,
+      setGeneratedAudio({
+        uri: result.uri,
+        voiceName: result.voiceName,
+        text: result.text,
       });
-      // Open New Alarm modal
-      router.push('/new-alarm');
+
+      // Save to history
+      await saveTTSAudio({
+        uri: result.uri,
+        voiceId: result.voiceId,
+        voiceName: result.voiceName,
+        text: result.text,
+        createdAt: result.createdAt,
+      });
+
+      await loadSavedAudios();
+    } catch (error) {
+      console.error('TTS generation failed:', error);
+      Alert.alert(
+        'Generation Failed',
+        error instanceof Error ? error.message : 'Failed to generate audio. Please try again.'
+      );
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  const handleDiscard = () => {
+  const handleUseAudio = (uri: string, voiceName: string) => {
+    setPendingSelection({
+      audioSource: { type: 'tts', uri },
+      audioName: `AI Voice · ${voiceName}`,
+    });
+    router.push('/new-alarm');
+  };
+
+  const handleDeleteSaved = async (audio: SavedTTSAudio) => {
     Alert.alert(
-      'Discard Audio?',
-      'Are you sure you want to discard this generated audio?',
+      'Delete Audio',
+      'Are you sure you want to delete this generated audio?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => {
-          setGeneratedAudio(null);
-          setIsPlaying(false);
-        }},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (playingId === audio.id) {
+              await stopCurrentAudio();
+            }
+            await deleteTTSAudio(audio.id);
+            await loadSavedAudios();
+          },
+        },
       ]
     );
   };
@@ -684,11 +810,58 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Voice Selection Section */}
+        <View style={styles.ttsSection}>
+          <Text style={styles.ttsSectionTitle}>Select a Voice</Text>
+          <Text style={styles.ttsSectionSubtitle}>
+            Tap a voice to select it, or tap the play button to hear a sample
+          </Text>
+
+          {VOICES.map((voice) => (
+            <Pressable
+              key={voice.id}
+              style={[
+                styles.voiceCard,
+                selectedVoice.id === voice.id && styles.voiceCardSelected,
+              ]}
+              onPress={() => setSelectedVoice(voice)}
+            >
+              <View style={styles.voiceInfo}>
+                <Text style={[
+                  styles.voiceName,
+                  selectedVoice.id === voice.id && styles.voiceNameSelected,
+                ]}>
+                  {voice.name}
+                </Text>
+                <Text style={[
+                  styles.voiceDescription,
+                  selectedVoice.id === voice.id && styles.voiceDescriptionSelected,
+                ]}>
+                  {voice.description}
+                </Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.voiceSampleBtn,
+                  playingId === `sample-${voice.id}` && styles.voiceSampleBtnPlaying,
+                ]}
+                onPress={() => handlePlaySample(voice)}
+              >
+                <IconSymbol
+                  name={playingId === `sample-${voice.id}` ? 'stop.fill' : 'play.fill'}
+                  size={18}
+                  color={playingId === `sample-${voice.id}` ? Colors.card : '#9B59B6'}
+                />
+              </Pressable>
+            </Pressable>
+          ))}
+        </View>
+
         {/* Text Input Section */}
         <View style={styles.ttsSection}>
           <Text style={styles.ttsSectionTitle}>Your Message</Text>
           <Text style={styles.ttsSectionSubtitle}>
-            Write what you want the AI voice to say to wake you up
+            Write what you want {selectedVoice.name} to say to wake you up
           </Text>
           <View style={styles.textInputContainer}>
             <TextInput
@@ -697,9 +870,6 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
               onChangeText={(newText) => {
                 if (newText.length <= maxCharacters) {
                   setText(newText);
-                  if (generatedAudio) {
-                    setGeneratedAudio(null);
-                  }
                 }
               }}
               placeholder="Good morning! It's time to rise and shine. Today is going to be an amazing day full of possibilities..."
@@ -713,92 +883,6 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
             ]}>
               {charactersRemaining} characters remaining
             </Text>
-          </View>
-        </View>
-
-        {/* Voice Settings Section */}
-        <View style={styles.ttsSection}>
-          <Text style={styles.ttsSectionTitle}>Voice Settings</Text>
-
-          {/* Gender Selection */}
-          <Text style={styles.ttsSubsectionTitle}>Voice Gender</Text>
-          <View style={styles.genderRow}>
-            <Pressable
-              style={[
-                styles.genderOption,
-                gender === 'female' && styles.genderOptionActive,
-              ]}
-              onPress={() => {
-                setGender('female');
-                if (generatedAudio) setGeneratedAudio(null);
-              }}
-            >
-              <IconSymbol
-                name="person.fill"
-                size={24}
-                color={gender === 'female' ? Colors.card : Colors.textLight}
-              />
-              <Text style={[
-                styles.genderLabel,
-                gender === 'female' && styles.genderLabelActive,
-              ]}>
-                Female
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[
-                styles.genderOption,
-                gender === 'male' && styles.genderOptionActive,
-              ]}
-              onPress={() => {
-                setGender('male');
-                if (generatedAudio) setGeneratedAudio(null);
-              }}
-            >
-              <IconSymbol
-                name="person.fill"
-                size={24}
-                color={gender === 'male' ? Colors.card : Colors.textLight}
-              />
-              <Text style={[
-                styles.genderLabel,
-                gender === 'male' && styles.genderLabelActive,
-              ]}>
-                Male
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* Voice Style Selection */}
-          <Text style={styles.ttsSubsectionTitle}>Voice Style</Text>
-          <View style={styles.styleGrid}>
-            {VOICE_STYLES.map((style) => (
-              <Pressable
-                key={style.id}
-                style={[
-                  styles.styleOption,
-                  voiceStyle === style.id && styles.styleOptionActive,
-                ]}
-                onPress={() => {
-                  setVoiceStyle(style.id);
-                  if (generatedAudio) setGeneratedAudio(null);
-                }}
-              >
-                <Text style={[
-                  styles.styleLabel,
-                  voiceStyle === style.id && styles.styleLabelActive,
-                ]}>
-                  {style.label}
-                </Text>
-                <Text style={[
-                  styles.styleDescription,
-                  voiceStyle === style.id && styles.styleDescriptionActive,
-                ]}>
-                  {style.description}
-                </Text>
-              </Pressable>
-            ))}
           </View>
         </View>
 
@@ -820,8 +904,8 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
               </>
             ) : (
               <>
-                <IconSymbol name="gear" size={24} color={Colors.card} />
-                <Text style={styles.generateButtonText}>Generate Voice</Text>
+                <IconSymbol name="waveform" size={24} color={Colors.card} />
+                <Text style={styles.generateButtonText}>Generate with {selectedVoice.name}</Text>
               </>
             )}
           </Pressable>
@@ -838,16 +922,16 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
             entering={FadeIn.duration(200)}
             style={styles.ttsSection}
           >
-            <Text style={styles.ttsSectionTitle}>Generated Audio</Text>
+            <Text style={styles.ttsSectionTitle}>Just Generated</Text>
             <View style={styles.audioPreviewCard}>
               <View style={styles.audioPreviewInfo}>
                 <IconSymbol name="waveform" size={32} color="#9B59B6" />
                 <View style={styles.audioPreviewText}>
                   <Text style={styles.audioPreviewTitle}>
-                    {gender === 'female' ? 'Female' : 'Male'} · {VOICE_STYLES.find(s => s.id === voiceStyle)?.label}
+                    {generatedAudio.voiceName}
                   </Text>
-                  <Text style={styles.audioPreviewDuration}>
-                    {text.length} characters
+                  <Text style={styles.audioPreviewDuration} numberOfLines={1}>
+                    "{generatedAudio.text.substring(0, 40)}..."
                   </Text>
                 </View>
               </View>
@@ -855,36 +939,78 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
               <View style={styles.audioControlsRow}>
                 <Pressable
                   style={[styles.audioControlBtn, styles.playBtn]}
-                  onPress={handlePlay}
+                  onPress={handlePlayGenerated}
                 >
                   <IconSymbol
-                    name={isPlaying ? 'pause.fill' : 'play.fill'}
+                    name={playingId === 'generated' ? 'stop.fill' : 'play.fill'}
                     size={24}
                     color={Colors.card}
                   />
                   <Text style={styles.audioControlLabel}>
-                    {isPlaying ? 'Pause' : 'Play'}
+                    {playingId === 'generated' ? 'Stop' : 'Play'}
                   </Text>
                 </Pressable>
 
                 <Pressable
-                  style={[styles.audioControlBtn, styles.discardBtn]}
-                  onPress={handleDiscard}
-                >
-                  <IconSymbol name="trash.fill" size={24} color={Colors.card} />
-                  <Text style={styles.audioControlLabel}>Discard</Text>
-                </Pressable>
-
-                <Pressable
                   style={[styles.audioControlBtn, styles.saveBtn]}
-                  onPress={handleSave}
+                  onPress={() => handleUseAudio(generatedAudio.uri, generatedAudio.voiceName)}
                 >
                   <IconSymbol name="checkmark" size={24} color={Colors.card} />
-                  <Text style={styles.audioControlLabel}>Save</Text>
+                  <Text style={styles.audioControlLabel}>Use</Text>
                 </Pressable>
               </View>
             </View>
           </Animated.View>
+        )}
+
+        {/* Saved Audio History */}
+        {savedAudios.length > 0 && (
+          <View style={styles.ttsSection}>
+            <Text style={styles.ttsSectionTitle}>Your Generated Audio</Text>
+            <Text style={styles.ttsSectionSubtitle}>
+              Previously generated audio you can use
+            </Text>
+
+            {savedAudios.map((audio) => (
+              <View key={audio.id} style={styles.savedAudioCard}>
+                <Pressable
+                  style={styles.savedAudioInfo}
+                  onPress={() => handlePlaySaved(audio)}
+                >
+                  <View style={[
+                    styles.savedAudioIcon,
+                    playingId === audio.id && styles.savedAudioIconPlaying,
+                  ]}>
+                    <IconSymbol
+                      name={playingId === audio.id ? 'stop.fill' : 'play.fill'}
+                      size={16}
+                      color={playingId === audio.id ? Colors.card : '#9B59B6'}
+                    />
+                  </View>
+                  <View style={styles.savedAudioText}>
+                    <Text style={styles.savedAudioTitle}>{audio.voiceName}</Text>
+                    <Text style={styles.savedAudioPreview} numberOfLines={1}>
+                      "{audio.text.substring(0, 30)}..."
+                    </Text>
+                  </View>
+                </Pressable>
+                <View style={styles.savedAudioActions}>
+                  <Pressable
+                    style={styles.savedAudioUseBtn}
+                    onPress={() => handleUseAudio(audio.uri, audio.voiceName)}
+                  >
+                    <Text style={styles.savedAudioUseBtnText}>Use</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.savedAudioDeleteBtn}
+                    onPress={() => handleDeleteSaved(audio)}
+                  >
+                    <IconSymbol name="trash.fill" size={16} color={Colors.danger} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -1434,5 +1560,116 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.card,
     marginTop: 4,
+  },
+
+  // Voice selection card styles
+  voiceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    ...Shadows.card,
+  },
+  voiceCardSelected: {
+    borderColor: '#9B59B6',
+    backgroundColor: '#9B59B610',
+  },
+  voiceInfo: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  voiceName: {
+    fontFamily: 'Quicksand-SemiBold',
+    fontSize: Typography.body.fontSize,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  voiceNameSelected: {
+    color: '#9B59B6',
+  },
+  voiceDescription: {
+    fontFamily: 'Quicksand-Regular',
+    fontSize: Typography.caption.fontSize,
+    color: Colors.textLight,
+    lineHeight: 18,
+  },
+  voiceDescriptionSelected: {
+    color: '#7D3C98',
+  },
+  voiceSampleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#9B59B620',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  voiceSampleBtnPlaying: {
+    backgroundColor: '#9B59B6',
+  },
+
+  // Saved audio card styles
+  savedAudioCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.card,
+  },
+  savedAudioInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  savedAudioIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#9B59B620',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.sm,
+  },
+  savedAudioIconPlaying: {
+    backgroundColor: '#9B59B6',
+  },
+  savedAudioText: {
+    flex: 1,
+  },
+  savedAudioTitle: {
+    fontFamily: 'Quicksand-SemiBold',
+    fontSize: Typography.caption.fontSize,
+    color: Colors.text,
+  },
+  savedAudioPreview: {
+    fontFamily: 'Quicksand-Regular',
+    fontSize: 11,
+    color: Colors.textLight,
+    marginTop: 2,
+  },
+  savedAudioActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  savedAudioUseBtn: {
+    backgroundColor: '#9B59B6',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  savedAudioUseBtnText: {
+    fontFamily: 'Quicksand-SemiBold',
+    fontSize: 12,
+    color: Colors.card,
+  },
+  savedAudioDeleteBtn: {
+    padding: Spacing.xs,
   },
 });
