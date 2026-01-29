@@ -34,25 +34,9 @@ interface PathCardProps {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function PathCard({ title, description, icon, color, onPress }: PathCardProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
-
   return (
-    <AnimatedPressable
-      style={[styles.pathCard, animatedStyle]}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+    <Pressable
+      style={styles.pathCard}
       onPress={onPress}
     >
       <View style={[styles.iconContainer, { backgroundColor: color }]}>
@@ -63,7 +47,7 @@ function PathCard({ title, description, icon, color, onPress }: PathCardProps) {
         <Text style={styles.pathDescription}>{description}</Text>
       </View>
       <IconSymbol name="chevron.right" size={20} color={Colors.textLight} />
-    </AnimatedPressable>
+    </Pressable>
   );
 }
 

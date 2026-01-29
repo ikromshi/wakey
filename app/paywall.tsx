@@ -44,7 +44,7 @@ const PREMIUM_FEATURES: Feature[] = [
   { text: 'Priority support', included: true },
 ];
 
-export default async function PaywallScreen() {
+export default function PaywallScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const { updateFromSuperwall } = useSubscription();
   const scale = useSharedValue(1);

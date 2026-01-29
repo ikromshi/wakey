@@ -114,6 +114,13 @@ export default function RootLayout() {
                       animation: 'fade',
                     }}
                   />
+                  <Stack.Screen
+                    name="legal"
+                    options={{
+                      headerShown: false,
+                      animation: 'slide_from_right',
+                    }}
+                  />
                 </Stack>
                 <StatusBar style="dark" />
               </ThemeProvider>
