@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FeatureList, RestorePurchases, type Feature } from '@/components/paywall';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { PLACEMENTS } from '@/config/superwall';
+import { PLACEMENTS, PRICING, type BillingPeriod } from '@/config/superwall';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
@@ -46,6 +46,7 @@ const PREMIUM_FEATURES: Feature[] = [
 
 export default function PaywallScreen() {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<BillingPeriod>('yearly');
   const { updateFromSuperwall } = useSubscription();
   const scale = useSharedValue(1);
 
@@ -169,27 +170,77 @@ export default function PaywallScreen() {
           </Text>
         </Animated.View>
 
-        {/* Premium Plan Card */}
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.planCard}>
-          <View style={styles.planHeader}>
-            <Text style={styles.planName}>Premium</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>$7.99</Text>
-              <Text style={styles.period}>/month</Text>
+        {/* Plan Selection */}
+        <Animated.View entering={FadeInDown.delay(200)} style={styles.planSelection}>
+          {/* Yearly Plan Option */}
+          <Pressable
+            style={[
+              styles.planOption,
+              selectedPlan === 'yearly' && styles.planOptionSelected,
+            ]}
+            onPress={() => setSelectedPlan('yearly')}
+          >
+            <View style={styles.planOptionHeader}>
+              <View style={styles.planOptionLeft}>
+                <View style={[
+                  styles.radioButton,
+                  selectedPlan === 'yearly' && styles.radioButtonSelected,
+                ]}>
+                  {selectedPlan === 'yearly' && <View style={styles.radioButtonInner} />}
+                </View>
+                <View>
+                  <Text style={styles.planOptionName}>Yearly</Text>
+                  <Text style={styles.planOptionEquivalent}>
+                    ${PRICING.yearly.monthlyEquivalent.toFixed(2)}/month
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.planOptionRight}>
+                <Text style={styles.planOptionPrice}>${PRICING.yearly.price}</Text>
+                <Text style={styles.planOptionPeriod}>/{PRICING.yearly.period}</Text>
+              </View>
             </View>
-            <Text style={styles.billingNote}>Billed monthly. Cancel anytime.</Text>
-          </View>
+            <View style={styles.savingsBadge}>
+              <Text style={styles.savingsBadgeText}>SAVE {PRICING.yearly.savings}%</Text>
+            </View>
+          </Pressable>
 
-          <View style={styles.divider} />
+          {/* Monthly Plan Option */}
+          <Pressable
+            style={[
+              styles.planOption,
+              selectedPlan === 'monthly' && styles.planOptionSelected,
+            ]}
+            onPress={() => setSelectedPlan('monthly')}
+          >
+            <View style={styles.planOptionHeader}>
+              <View style={styles.planOptionLeft}>
+                <View style={[
+                  styles.radioButton,
+                  selectedPlan === 'monthly' && styles.radioButtonSelected,
+                ]}>
+                  {selectedPlan === 'monthly' && <View style={styles.radioButtonInner} />}
+                </View>
+                <View>
+                  <Text style={styles.planOptionName}>Monthly</Text>
+                </View>
+              </View>
+              <View style={styles.planOptionRight}>
+                <Text style={styles.planOptionPrice}>${PRICING.monthly.price}</Text>
+                <Text style={styles.planOptionPeriod}>/{PRICING.monthly.period}</Text>
+              </View>
+            </View>
+          </Pressable>
+        </Animated.View>
 
-          <View style={styles.featuresSection}>
-            <Text style={styles.featuresTitle}>Everything included:</Text>
-            <FeatureList features={PREMIUM_FEATURES} />
-          </View>
+        {/* Features Card */}
+        <Animated.View entering={FadeInDown.delay(300)} style={styles.featuresCard}>
+          <Text style={styles.featuresTitle}>Everything included:</Text>
+          <FeatureList features={PREMIUM_FEATURES} />
         </Animated.View>
 
         {/* Subscribe Button */}
-        <Animated.View entering={FadeInDown.delay(300)}>
+        <Animated.View entering={FadeInDown.delay(400)}>
           <AnimatedPressable
             style={[styles.subscribeButton, buttonAnimatedStyle]}
             onPress={handleSubscribe}
@@ -198,13 +249,15 @@ export default function PaywallScreen() {
             disabled={isLoading}
           >
             <Text style={styles.subscribeButtonText}>
-              {isLoading ? 'Processing...' : 'Subscribe Now'}
+              {isLoading
+                ? 'Processing...'
+                : `Subscribe for $${selectedPlan === 'yearly' ? PRICING.yearly.price : PRICING.monthly.price}/${selectedPlan === 'yearly' ? 'year' : 'month'}`}
             </Text>
           </AnimatedPressable>
         </Animated.View>
 
         {/* Trust Badges */}
-        <Animated.View entering={FadeInDown.delay(400)} style={styles.trustSection}>
+        <Animated.View entering={FadeInDown.delay(500)} style={styles.trustSection}>
           <View style={styles.trustItem}>
             <IconSymbol name="lock.fill" size={16} color={Colors.success} />
             <Text style={styles.trustText}>Secure payment</Text>
@@ -285,59 +338,101 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: Spacing.md,
   },
-  planCard: {
+  planSelection: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  planOption: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     borderWidth: 2,
-    borderColor: Colors.primary,
-    marginBottom: Spacing.lg,
+    borderColor: Colors.border,
     ...Shadows.card,
   },
-  planHeader: {
+  planOptionSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '08',
+  },
+  planOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
   },
-  planName: {
-    fontFamily: 'Quicksand-Bold',
-    fontSize: 20,
-    color: Colors.primary,
-    marginBottom: Spacing.xs,
+  planOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
   },
-  priceRow: {
+  planOptionRight: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
-  price: {
-    fontFamily: 'Quicksand-Bold',
-    fontSize: 36,
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: Colors.primary,
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+  },
+  planOptionName: {
+    fontFamily: 'Quicksand-SemiBold',
+    fontSize: Typography.body.fontSize,
     color: Colors.text,
   },
-  period: {
-    fontFamily: 'Quicksand-Regular',
-    fontSize: Typography.body.fontSize,
-    color: Colors.textLight,
-    marginLeft: 4,
-  },
-  billingNote: {
+  planOptionEquivalent: {
     fontFamily: 'Quicksand-Regular',
     fontSize: Typography.caption.fontSize,
     color: Colors.textLight,
-    marginTop: Spacing.xs,
+    marginTop: 2,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: Spacing.md,
+  planOptionPrice: {
+    fontFamily: 'Quicksand-Bold',
+    fontSize: 20,
+    color: Colors.text,
   },
-  featuresSection: {
-    gap: Spacing.sm,
+  planOptionPeriod: {
+    fontFamily: 'Quicksand-Regular',
+    fontSize: Typography.caption.fontSize,
+    color: Colors.textLight,
+  },
+  savingsBadge: {
+    backgroundColor: Colors.success,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+  },
+  savingsBadgeText: {
+    fontFamily: 'Quicksand-Bold',
+    fontSize: 11,
+    color: Colors.card,
+    letterSpacing: 0.5,
+  },
+  featuresCard: {
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadows.card,
   },
   featuresTitle: {
     fontFamily: 'Quicksand-SemiBold',
     fontSize: Typography.body.fontSize,
     color: Colors.text,
-    marginBottom: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   subscribeButton: {
     backgroundColor: Colors.primary,

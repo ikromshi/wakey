@@ -20,6 +20,26 @@ export const PLACEMENTS = {
 // Product identifiers - should match App Store Connect / Google Play Console
 export const PRODUCTS = {
   PREMIUM_MONTHLY: 'com.risealarm.premium.monthly',
+  PREMIUM_YEARLY: 'com.risealarm.premium.yearly',
+} as const;
+
+// Billing period type
+export type BillingPeriod = 'monthly' | 'yearly';
+
+// Pricing info for display
+export const PRICING = {
+  monthly: {
+    price: 7.99,
+    period: 'month',
+    productId: PRODUCTS.PREMIUM_MONTHLY,
+  },
+  yearly: {
+    price: 49.99,
+    period: 'year',
+    monthlyEquivalent: 4.17, // $49.99 / 12
+    savings: 52, // percentage off vs monthly
+    productId: PRODUCTS.PREMIUM_YEARLY,
+  },
 } as const;
 
 // Plan types - simplified to single premium plan

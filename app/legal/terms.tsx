@@ -50,7 +50,9 @@ export default function TermsOfServiceScreen() {
 
           <Text style={styles.subTitle}>Subscription Plans</Text>
           <Text style={styles.paragraph}>
-            RiseAlarm offers a Premium subscription at $7.99/month that provides access to all features including AI voice generation.
+            RiseAlarm offers Premium subscriptions that provide access to all features including AI voice generation:{'\\n'}
+            • Monthly: $7.99/month{'\\n'}
+            • Yearly: $49.99/year (save 52%)
           </Text>
 
           <Text style={styles.subTitle}>Billing</Text>
