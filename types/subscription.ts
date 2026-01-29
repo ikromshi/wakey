@@ -2,13 +2,13 @@
  * Subscription Types
  */
 
-// Plan types
-export type PlanType = 'none' | 'basic' | 'full';
+// Plan types - simplified to single premium plan
+export type PlanType = 'none' | 'premium';
 
 // Subscription status
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'grace_period' | 'none';
 
-// Feature identifiers
+// Feature identifiers - all features included in premium
 export type Feature =
   | 'unlimited_alarms'
   | 'voice_recording'
@@ -90,16 +90,10 @@ export const initialSubscriptionState: SubscriptionState = {
   lastSyncedAt: null,
 };
 
-// Feature access by plan
+// Feature access by plan - premium gets all features
 export const FEATURE_ACCESS: Record<PlanType, Feature[]> = {
   none: [],
-  basic: [
-    'unlimited_alarms',
-    'voice_recording',
-    'script_reading',
-    'audio_templates',
-  ],
-  full: [
+  premium: [
     'unlimited_alarms',
     'voice_recording',
     'script_reading',

@@ -14,7 +14,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { UpgradeButton, FullPlanBadge } from '@/components/paywall';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { useAudioSelection } from '@/context/AudioSelectionContext';
-import { useCanUseAIVoice, useSubscription } from '@/context/SubscriptionContext';
+import { useSubscription } from '@/context/SubscriptionContext';
 import { SCRIPT_CATEGORIES, Script, getScriptsByCategory } from '@/data/scripts';
 import { formatDuration, useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { saveAudioFile } from '@/services/audioStorage';
@@ -609,13 +609,12 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const { setPendingSelection } = useAudioSelection();
 
-  // Check if user has Full plan for AI voice access
-  const canUseAIVoice = useCanUseAIVoice();
-  const { plan: currentPlan } = useSubscription();
+  // Check if user has premium subscription
+  const { isSubscribed } = useSubscription();
 
   const maxCharacters = 500;
   const charactersRemaining = maxCharacters - text.length;
-  const canGenerate = text.trim().length >= 10 && selectedVoice && canUseAIVoice;
+  const canGenerate = text.trim().length >= 10 && selectedVoice && isSubscribed;
 
   // Load saved TTS audios on mount
   useEffect(() => {
@@ -820,7 +819,7 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
         <View style={styles.ttsSection}>
           <View style={styles.ttsSectionHeader}>
             <Text style={styles.ttsSectionTitle}>Select a Voice</Text>
-            {!canUseAIVoice && <FullPlanBadge />}
+            {!isSubscribed && <FullPlanBadge />}
           </View>
           <Text style={styles.ttsSectionSubtitle}>
             Tap a voice to select it, or tap the play button to hear a sample
@@ -897,7 +896,7 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
 
         {/* Generate Button or Upgrade Prompt */}
         <View style={styles.ttsSection}>
-          {canUseAIVoice ? (
+          {isSubscribed ? (
             <>
               <Pressable
                 style={[
@@ -928,9 +927,8 @@ function AITTSScreen({ onBack }: { onBack: () => void }) {
             </>
           ) : (
             <UpgradeButton
-              buttonText={currentPlan === 'basic' ? 'Upgrade to Full' : 'Upgrade to Generate'}
-              subtitle="AI voice generation is available with the Full plan"
-              upgradeFrom={currentPlan === 'basic' ? 'basic' : 'none'}
+              buttonText="Subscribe to Generate"
+              subtitle="AI voice generation requires a Premium subscription"
             />
           )}
         </View>

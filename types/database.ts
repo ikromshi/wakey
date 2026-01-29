@@ -45,7 +45,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
-          plan: 'none' | 'basic' | 'full';
+          plan: 'none' | 'premium';
           status: 'active' | 'canceled' | 'expired' | 'trial';
           provider: 'apple' | 'google' | 'stripe' | null;
           provider_subscription_id: string | null;
@@ -58,7 +58,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
-          plan?: 'none' | 'basic' | 'full';
+          plan?: 'none' | 'premium';
           status?: 'active' | 'canceled' | 'expired' | 'trial';
           provider?: 'apple' | 'google' | 'stripe' | null;
           provider_subscription_id?: string | null;
@@ -69,7 +69,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          plan?: 'none' | 'basic' | 'full';
+          plan?: 'none' | 'premium';
           status?: 'active' | 'canceled' | 'expired' | 'trial';
           provider?: 'apple' | 'google' | 'stripe' | null;
           provider_subscription_id?: string | null;
@@ -125,7 +125,7 @@ export type Database = {
       [_ in never]: never;
     };
     Enums: {
-      plan_type: 'none' | 'basic' | 'full';
+      plan_type: 'none' | 'premium';
       subscription_status: 'active' | 'canceled' | 'expired' | 'trial';
       subscription_provider: 'apple' | 'google' | 'stripe';
       audio_source_type: 'default' | 'recording' | 'template' | 'tts';

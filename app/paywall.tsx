@@ -1,83 +1,59 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Alert,
-  Linking,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
+import { FeatureList, RestorePurchases, type Feature } from '@/components/paywall';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FeatureList, type Feature, RestorePurchases } from '@/components/paywall';
+import { PLACEMENTS } from '@/config/superwall';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { useSubscription } from '@/hooks/useSubscription';
 import {
-  registerPlacement,
   isSuperwallLinked,
+  registerPlacement,
   type RestoreResult,
 } from '@/services/superwall';
-import { PLACEMENTS } from '@/config/superwall';
-import { useSubscription } from '@/hooks/useSubscription';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-// Feature lists for each plan (compact for side-by-side)
-const BASIC_FEATURES: Feature[] = [
+// Number of taps required to activate admin mode
+const ADMIN_TAP_COUNT = 4;
+const ADMIN_TAP_TIMEOUT = 3000; // Reset tap count after 3 seconds
+
+// All features included in premium plan
+const PREMIUM_FEATURES: Feature[] = [
   { text: 'Unlimited alarms', included: true },
   { text: 'Voice recording', included: true },
-  { text: 'Script reading', included: true },
-  { text: 'Audio templates', included: true },
-  { text: 'AI voices', included: false },
-];
-
-const FULL_FEATURES: Feature[] = [
-  { text: 'Everything in Basic', included: true },
-  { text: 'AI voices', included: true, highlight: true },
-  { text: '4 premium voices', included: true },
-  { text: 'Unlimited AI', included: true },
+  { text: 'Script reading with prompts', included: true },
+  { text: 'Audio templates library', included: true },
+  { text: 'AI-generated voices', included: true, highlight: true },
+  { text: 'Unlimited AI generations', included: true },
   { text: 'Priority support', included: true },
 ];
 
-interface CompactPlanCardProps {
-  name: string;
-  price: string;
-  period: string;
-  features: Feature[];
-  recommended?: boolean;
-  badge?: string;
-  buttonText: string;
-  onPress: () => void;
-  isLoading?: boolean;
-  accentColor?: string;
-}
-
-function CompactPlanCard({
-  name,
-  price,
-  period,
-  features,
-  recommended = false,
-  badge,
-  buttonText,
-  onPress,
-  isLoading = false,
-  accentColor = Colors.primary,
-}: CompactPlanCardProps) {
+export default async function PaywallScreen() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { updateFromSuperwall } = useSubscription();
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  // Admin bypass state
+  const tapCountRef = useRef(0);
+  const lastTapTimeRef = useRef(0);
+
+  const buttonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
@@ -89,93 +65,71 @@ function CompactPlanCard({
     scale.value = withSpring(1, { damping: 15, stiffness: 300 });
   };
 
-  return (
-    <AnimatedPressable
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      onPress={onPress}
-      disabled={isLoading}
-      style={[
-        animatedStyle,
-        styles.card,
-        recommended && styles.cardRecommended,
-        recommended && { borderColor: accentColor },
-      ]}
-    >
-      {badge && (
-        <View style={[styles.badge, { backgroundColor: accentColor }]}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      )}
+  // Secret admin bypass - tap the icon 7 times within 3 seconds
+  const handleIconTap = () => {
+    const now = Date.now();
 
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardName}>{name}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={[styles.price, recommended && { color: accentColor }]}>
-            {price}
-          </Text>
-          <Text style={styles.period}>{period}</Text>
-        </View>
-      </View>
+    // Reset tap count if too much time has passed
+    if (now - lastTapTimeRef.current > ADMIN_TAP_TIMEOUT) {
+      tapCountRef.current = 0;
+    }
 
-      <View style={styles.cardDivider} />
+    lastTapTimeRef.current = now;
+    tapCountRef.current += 1;
 
-      <View style={styles.featuresContainer}>
-        <FeatureList features={features} compact />
-      </View>
+    if (tapCountRef.current >= ADMIN_TAP_COUNT) {
+      tapCountRef.current = 0;
+      activateAdminMode();
+    }
+  };
 
-      <Pressable
-        style={[
-          styles.cardButton,
-          recommended
-            ? { backgroundColor: accentColor }
-            : [styles.cardButtonOutline, { borderColor: accentColor }],
-        ]}
-        onPress={onPress}
-        disabled={isLoading}
-      >
-        <Text
-          style={[
-            styles.cardButtonText,
-            !recommended && { color: accentColor },
-          ]}
-        >
-          {isLoading ? '...' : buttonText}
-        </Text>
-      </Pressable>
-    </AnimatedPressable>
-  );
-}
-
-export default function PaywallScreen() {
-  const [isLoading, setIsLoading] = useState<'basic' | 'full' | null>(null);
-  const { plan: currentPlan } = useSubscription();
+  const activateAdminMode = () => {
+    Alert.alert(
+      'Admin Mode',
+      'Activate admin/review mode? This grants full access without payment.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Activate',
+          onPress: () => {
+            // Grant premium access
+            updateFromSuperwall({ isSubscribed: true, plan: 'premium' });
+            router.replace('/(tabs)');
+          },
+        },
+      ]
+    );
+  };
 
   // Handle restore completion - navigate to app if restored
   const handleRestoreComplete = (result: RestoreResult) => {
     if (result.restored) {
-      // User has a restored subscription, go to main app
       router.replace('/(tabs)');
     }
   };
 
-  const handleSubscribe = async (plan: 'basic' | 'full') => {
-    setIsLoading(plan);
+  const handleSubscribe = async () => {
+    setIsLoading(true);
 
     try {
       if (isSuperwallLinked()) {
         // Use Superwall to handle the purchase
-        await registerPlacement(PLACEMENTS.ONBOARDING_COMPLETE, { selectedPlan: plan });
+        await registerPlacement(PLACEMENTS.ONBOARDING_COMPLETE);
+        // Superwall will handle navigation after successful purchase
       } else {
         // Mock purchase flow for development/Expo Go
         await new Promise((resolve) => setTimeout(resolve, 1500));
         Alert.alert(
           'Development Mode',
-          `In production, this would start the ${plan === 'full' ? 'Full' : 'Basic'} plan subscription via Superwall.`,
+          'In production, this would start your Premium subscription via the App Store.',
           [
             {
               text: 'Continue to App',
-              onPress: () => router.replace('/(tabs)'),
+              onPress: () => {
+                // Mock successful subscription
+                updateFromSuperwall({ isSubscribed: true, plan: 'premium' });
+                router.replace('/(tabs)');
+              },
             },
           ]
         );
@@ -184,16 +138,16 @@ export default function PaywallScreen() {
       console.error('Subscription error:', error);
       Alert.alert('Error', 'Failed to process subscription. Please try again.');
     } finally {
-      setIsLoading(null);
+      setIsLoading(false);
     }
   };
 
   const handleTerms = () => {
-    Linking.openURL('https://example.com/terms');
+    router.push('/legal/terms');
   };
 
   const handlePrivacy = () => {
-    Linking.openURL('https://example.com/privacy');
+    router.push('/legal/privacy');
   };
 
   return (
@@ -205,54 +159,65 @@ export default function PaywallScreen() {
       >
         {/* Title Section */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.titleSection}>
-          <View style={styles.iconContainer}>
-            <IconSymbol name="star.fill" size={32} color={Colors.primary} />
-          </View>
-          <Text style={styles.title}>Unlock Your Best Mornings</Text>
+          {/* Tappable icon for admin bypass - tap 7 times */}
+          <Pressable onPress={handleIconTap} style={styles.iconContainer}>
+            <IconSymbol name="star.fill" size={36} color={Colors.primary} />
+          </Pressable>
+          <Text style={styles.title}>Unlock RiseAlarm</Text>
           <Text style={styles.subtitle}>
-            Choose a plan that works for you
+            Get full access to all features and wake up inspired every day
           </Text>
         </Animated.View>
 
-        {/* Plan Cards - Side by Side */}
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.plansRow}>
-          {/* Basic Plan */}
-          <CompactPlanCard
-            name="Basic"
-            price="$4.99"
-            period="/mo"
-            features={BASIC_FEATURES}
-            buttonText="Select"
-            onPress={() => handleSubscribe('basic')}
-            isLoading={isLoading === 'basic'}
-            accentColor={Colors.primary}
-          />
+        {/* Premium Plan Card */}
+        <Animated.View entering={FadeInDown.delay(200)} style={styles.planCard}>
+          <View style={styles.planHeader}>
+            <Text style={styles.planName}>Premium</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>$7.99</Text>
+              <Text style={styles.period}>/month</Text>
+            </View>
+            <Text style={styles.billingNote}>Billed monthly. Cancel anytime.</Text>
+          </View>
 
-          {/* Full Plan - Recommended */}
-          <CompactPlanCard
-            name="Full"
-            price="$9.99"
-            period="/mo"
-            features={FULL_FEATURES}
-            recommended
-            badge="Best"
-            buttonText="Select"
-            onPress={() => handleSubscribe('full')}
-            isLoading={isLoading === 'full'}
-            accentColor="#9B59B6"
-          />
+          <View style={styles.divider} />
+
+          <View style={styles.featuresSection}>
+            <Text style={styles.featuresTitle}>Everything included:</Text>
+            <FeatureList features={PREMIUM_FEATURES} />
+          </View>
         </Animated.View>
 
-        {/* Value Proposition */}
-        <Animated.View entering={FadeInDown.delay(300)} style={styles.valueSection}>
-          <View style={styles.valueItem}>
+        {/* Subscribe Button */}
+        <Animated.View entering={FadeInDown.delay(300)}>
+          <AnimatedPressable
+            style={[styles.subscribeButton, buttonAnimatedStyle]}
+            onPress={handleSubscribe}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            disabled={isLoading}
+          >
+            <Text style={styles.subscribeButtonText}>
+              {isLoading ? 'Processing...' : 'Subscribe Now'}
+            </Text>
+          </AnimatedPressable>
+        </Animated.View>
+
+        {/* Trust Badges */}
+        <Animated.View entering={FadeInDown.delay(400)} style={styles.trustSection}>
+          <View style={styles.trustItem}>
             <IconSymbol name="lock.fill" size={16} color={Colors.success} />
-            <Text style={styles.valueText}>Cancel anytime</Text>
+            <Text style={styles.trustText}>Secure payment</Text>
           </View>
-          <View style={styles.valueDivider} />
-          <View style={styles.valueItem}>
+          <View style={styles.trustDivider} />
+          <View style={styles.trustItem}>
+            <IconSymbol name="arrow.counterclockwise" size={16} color={Colors.success} />
+            <Text style={styles.trustText}>Cancel anytime</Text>
+          </View>
+          <View style={styles.trustDivider} />
+          <View style={styles.trustItem}>
             <IconSymbol name="shield.fill" size={16} color={Colors.success} />
-            <Text style={styles.valueText}>Secure payment</Text>
+            <Text style={styles.trustText}>Auto-renews</Text>
           </View>
         </Animated.View>
       </ScrollView>
@@ -290,16 +255,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xl,
+    paddingBottom: Spacing.lg,
   },
   titleSection: {
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: Colors.primary + '15',
     justifyContent: 'center',
     alignItems: 'center',
@@ -307,7 +272,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Quicksand-Bold',
-    fontSize: 26,
+    fontSize: 28,
     color: Colors.text,
     textAlign: 'center',
     marginBottom: Spacing.xs,
@@ -317,108 +282,98 @@ const styles = StyleSheet.create({
     fontSize: Typography.body.fontSize,
     color: Colors.textLight,
     textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: Spacing.md,
   },
-  plansRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  card: {
-    flex: 1,
+  planCard: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    padding: Spacing.lg,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    marginBottom: Spacing.lg,
     ...Shadows.card,
   },
-  cardRecommended: {
-    borderWidth: 2,
-  },
-  badge: {
-    position: 'absolute',
-    top: -10,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.full,
-  },
-  badgeText: {
-    fontFamily: 'Quicksand-SemiBold',
-    fontSize: 10,
-    color: Colors.card,
-    textTransform: 'uppercase',
-  },
-  cardHeader: {
+  planHeader: {
     alignItems: 'center',
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
-  cardName: {
+  planName: {
     fontFamily: 'Quicksand-Bold',
-    fontSize: 16,
-    color: Colors.text,
-    marginBottom: 2,
+    fontSize: 20,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
-  priceContainer: {
+  priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   price: {
     fontFamily: 'Quicksand-Bold',
-    fontSize: 24,
+    fontSize: 36,
     color: Colors.text,
   },
   period: {
     fontFamily: 'Quicksand-Regular',
-    fontSize: 12,
+    fontSize: Typography.body.fontSize,
     color: Colors.textLight,
-    marginLeft: 2,
+    marginLeft: 4,
   },
-  cardDivider: {
+  billingNote: {
+    fontFamily: 'Quicksand-Regular',
+    fontSize: Typography.caption.fontSize,
+    color: Colors.textLight,
+    marginTop: Spacing.xs,
+  },
+  divider: {
     height: 1,
     backgroundColor: Colors.border,
-    marginVertical: Spacing.sm,
+    marginVertical: Spacing.md,
   },
-  featuresContainer: {
-    marginBottom: Spacing.md,
+  featuresSection: {
+    gap: Spacing.sm,
   },
-  cardButton: {
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardButtonOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-  },
-  cardButtonText: {
+  featuresTitle: {
     fontFamily: 'Quicksand-SemiBold',
-    fontSize: 14,
+    fontSize: Typography.body.fontSize,
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  subscribeButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    ...Shadows.button,
+  },
+  subscribeButtonText: {
+    fontFamily: 'Quicksand-Bold',
+    fontSize: Typography.body.fontSize,
     color: Colors.card,
   },
-  valueSection: {
+  trustSection: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing.xl,
-    paddingVertical: Spacing.md,
-  },
-  valueItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: Spacing.xs,
   },
-  valueText: {
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trustText: {
     fontFamily: 'Quicksand-Medium',
     fontSize: Typography.caption.fontSize,
     color: Colors.text,
   },
-  valueDivider: {
+  trustDivider: {
     width: 1,
-    height: 16,
+    height: 14,
     backgroundColor: Colors.border,
-    marginHorizontal: Spacing.md,
+    marginHorizontal: Spacing.sm,
   },
   footer: {
     paddingHorizontal: Spacing.lg,

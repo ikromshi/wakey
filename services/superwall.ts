@@ -56,7 +56,7 @@ function createDelegate() {
       const isSubscribed = to?.status === 'ACTIVE';
       notifySubscriptionListeners({
         isSubscribed,
-        plan: isSubscribed ? 'full' : 'none',
+        plan: isSubscribed ? 'premium' : 'none',
       });
     }
 
@@ -256,7 +256,7 @@ export async function checkSubscriptionStatus(): Promise<{
 
     return {
       isSubscribed,
-      plan: isSubscribed ? 'full' : 'none',
+      plan: isSubscribed ? 'premium' : 'none',
     };
   } catch (error) {
     console.error('Failed to check subscription status:', error);
@@ -422,9 +422,3 @@ export async function restorePurchases(): Promise<RestoreResult> {
   }
 }
 
-/**
- * Show upgrade paywall for Basic → Full plan upgrade
- */
-export async function showUpgradePaywall(): Promise<void> {
-  await registerPlacement(PLACEMENTS.SETTINGS_UPGRADE, { upgradeFrom: 'basic' });
-}

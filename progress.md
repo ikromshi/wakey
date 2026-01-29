@@ -54,6 +54,12 @@
 - [x] Task 33: Implement auth state management and session persistence
 - [x] Task 34: Connect subscription data to user accounts
 
+### Pricing & Account Management
+- [x] Task 35: Simplify to single $7.99/month plan with full access
+- [x] Task 36: Convert paywall to hard paywall (unskippable, onboarding as preview) + Admin bypass
+- [ ] Task 37: Add Account tab with profile, subscription management, delete account
+- [ ] Task 38: Add Privacy Policy and Terms of Service pages
+
 ---
 
 ## Completed Tasks

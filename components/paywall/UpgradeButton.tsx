@@ -9,7 +9,7 @@ import { router } from 'expo-router';
 
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
-import { showAIVoicePaywall, showUpgradePaywall, isSuperwallLinked } from '@/services/superwall';
+import { showAIVoicePaywall, isSuperwallLinked } from '@/services/superwall';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -24,17 +24,14 @@ interface UpgradeButtonProps {
   accentColor?: string;
   // Compact mode for inline usage
   compact?: boolean;
-  // Set to 'basic' if upgrading from Basic to Full plan
-  upgradeFrom?: 'none' | 'basic';
 }
 
 export function UpgradeButton({
-  buttonText = 'Upgrade to Full Plan',
+  buttonText = 'Subscribe to Premium',
   subtitle,
   onUpgrade,
-  accentColor = '#9B59B6',
+  accentColor = Colors.primary,
   compact = false,
-  upgradeFrom = 'none',
 }: UpgradeButtonProps) {
   const scale = useSharedValue(1);
 
@@ -52,12 +49,7 @@ export function UpgradeButton({
 
   const handlePress = async () => {
     if (isSuperwallLinked()) {
-      // Use appropriate paywall based on current plan
-      if (upgradeFrom === 'basic') {
-        await showUpgradePaywall();
-      } else {
-        await showAIVoicePaywall();
-      }
+      await showAIVoicePaywall();
     } else {
       // In development, navigate to paywall directly
       router.push('/paywall');
@@ -103,15 +95,15 @@ export function UpgradeButton({
   );
 }
 
-interface FullPlanBadgeProps {
+interface PremiumBadgeProps {
   // Text shown in the badge
   text?: string;
 }
 
-export function FullPlanBadge({ text = 'Full Plan Feature' }: FullPlanBadgeProps) {
+export function FullPlanBadge({ text = 'Premium Feature' }: PremiumBadgeProps) {
   return (
     <View style={styles.badge}>
-      <IconSymbol name="star.fill" size={14} color="#9B59B6" />
+      <IconSymbol name="star.fill" size={14} color={Colors.primary} />
       <Text style={styles.badgeText}>{text}</Text>
     </View>
   );
@@ -163,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    backgroundColor: '#9B59B620',
+    backgroundColor: Colors.primary + '20',
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
@@ -171,6 +163,6 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: 'Quicksand-SemiBold',
     fontSize: Typography.caption.fontSize,
-    color: '#9B59B6',
+    color: Colors.primary,
   },
 });

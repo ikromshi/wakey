@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create enum types
-CREATE TYPE plan_type AS ENUM ('none', 'basic', 'full');
+CREATE TYPE plan_type AS ENUM ('none', 'premium');
 CREATE TYPE subscription_status AS ENUM ('active', 'canceled', 'expired', 'trial');
 CREATE TYPE subscription_provider AS ENUM ('apple', 'google', 'stripe');
 CREATE TYPE audio_source_type AS ENUM ('default', 'recording', 'template', 'tts');

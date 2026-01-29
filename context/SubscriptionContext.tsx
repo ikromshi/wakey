@@ -48,7 +48,7 @@ function subscriptionReducer(
     case 'SET_SUBSCRIPTION':
       const newState = { ...state, ...action.payload };
       // Auto-compute canUseAIVoice based on plan
-      newState.canUseAIVoice = newState.plan === 'full' && newState.isSubscribed;
+      newState.canUseAIVoice = newState.plan === 'premium' && newState.isSubscribed;
       return newState;
 
     case 'CLEAR_SUBSCRIPTION':
@@ -185,7 +185,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         plan,
         isSubscribed,
         status: isSubscribed ? 'active' : 'none',
-        canUseAIVoice: plan === 'full' && isSubscribed,
+        canUseAIVoice: plan === 'premium' && isSubscribed,
         expirationDate: null, // Superwall doesn't provide this directly
         productId: null,
         isLoading: false,
