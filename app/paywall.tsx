@@ -20,15 +20,16 @@ import Animated, {
 
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FeatureList, type Feature } from '@/components/paywall';
+import { FeatureList, type Feature, RestorePurchases } from '@/components/paywall';
 import {
   registerPlacement,
   isSuperwallLinked,
+  type RestoreResult,
 } from '@/services/superwall';
 import { PLACEMENTS } from '@/config/superwall';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - Spacing.sm) / 2;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -148,6 +149,15 @@ function CompactPlanCard({
 
 export default function PaywallScreen() {
   const [isLoading, setIsLoading] = useState<'basic' | 'full' | null>(null);
+  const { plan: currentPlan } = useSubscription();
+
+  // Handle restore completion - navigate to app if restored
+  const handleRestoreComplete = (result: RestoreResult) => {
+    if (result.restored) {
+      // User has a restored subscription, go to main app
+      router.replace('/(tabs)');
+    }
+  };
 
   const handleSubscribe = async (plan: 'basic' | 'full') => {
     setIsLoading(plan);
@@ -173,33 +183,6 @@ export default function PaywallScreen() {
     } catch (error) {
       console.error('Subscription error:', error);
       Alert.alert('Error', 'Failed to process subscription. Please try again.');
-    } finally {
-      setIsLoading(null);
-    }
-  };
-
-  const handleRestorePurchases = async () => {
-    setIsLoading('basic'); // Just to show loading state
-
-    try {
-      if (isSuperwallLinked()) {
-        // Superwall handles restore through the SDK
-        Alert.alert(
-          'Restore Purchases',
-          'Checking for previous purchases...',
-          [{ text: 'OK' }]
-        );
-      } else {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        Alert.alert(
-          'Development Mode',
-          'In production, this would restore purchases via Superwall.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      console.error('Restore error:', error);
-      Alert.alert('Error', 'Failed to restore purchases. Please try again.');
     } finally {
       setIsLoading(null);
     }
@@ -276,9 +259,11 @@ export default function PaywallScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Pressable onPress={handleRestorePurchases}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
-        </Pressable>
+        <RestorePurchases
+          onRestoreComplete={handleRestoreComplete}
+          linkStyle
+          color={Colors.primary}
+        />
 
         <View style={styles.legalLinks}>
           <Pressable onPress={handleTerms}>
@@ -441,12 +426,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-  },
-  restoreText: {
-    fontFamily: 'Quicksand-Medium',
-    fontSize: Typography.body.fontSize,
-    color: Colors.primary,
-    marginBottom: Spacing.sm,
   },
   legalLinks: {
     flexDirection: 'row',

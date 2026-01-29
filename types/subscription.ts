@@ -70,6 +70,9 @@ export interface SubscriptionActions {
 
   // Clear subscription (for testing/logout)
   clearSubscription: () => Promise<void>;
+
+  // Update from Superwall status (used by RestorePurchases)
+  updateFromSuperwall: (status: { isSubscribed: boolean; plan: PlanType }) => void;
 }
 
 // Full subscription context type

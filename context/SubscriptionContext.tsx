@@ -16,6 +16,12 @@ import {
   addSubscriptionListener,
   isSuperwallLinked,
 } from '@/services/superwall';
+import {
+  fetchUserSubscription,
+  syncSubscriptionToDatabase,
+  subscriptionToPlanType,
+} from '@/services/subscriptionSync';
+import { getCurrentUser } from '@/services/supabase';
 
 // Storage key
 const SUBSCRIPTION_STORAGE_KEY = '@rise_alarm/subscription';
@@ -258,6 +264,67 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     await AsyncStorage.removeItem(SUBSCRIPTION_STORAGE_KEY);
   }, []);
 
+  // Update from Superwall status (used by RestorePurchases and other components)
+  const updateFromSuperwall = useCallback(
+    async (status: { isSubscribed: boolean; plan: PlanType }) => {
+      dispatch({
+        type: 'SET_SUBSCRIPTION',
+        payload: {
+          plan: status.plan,
+          isSubscribed: status.isSubscribed,
+          status: status.isSubscribed ? 'active' : 'none',
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      // Persist locally
+      await persistSubscription({
+        plan: status.plan,
+        status: status.isSubscribed ? 'active' : 'none',
+        expirationDate: null,
+        productId: null,
+        lastSyncedAt: new Date().toISOString(),
+      });
+
+      // Sync to database if user is authenticated
+      const user = await getCurrentUser();
+      if (user) {
+        await syncSubscriptionToDatabase(status.plan);
+      }
+    },
+    []
+  );
+
+  // Sync with database when user is authenticated
+  useEffect(() => {
+    const syncWithDatabase = async () => {
+      const user = await getCurrentUser();
+      if (!user) return;
+
+      // Fetch subscription from database
+      const dbSubscription = await fetchUserSubscription();
+      if (dbSubscription) {
+        const dbPlan = subscriptionToPlanType(dbSubscription);
+        const isSubscribed = dbPlan !== 'none';
+
+        dispatch({
+          type: 'SET_SUBSCRIPTION',
+          payload: {
+            plan: dbPlan,
+            isSubscribed,
+            status: isSubscribed ? 'active' : 'none',
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+    };
+
+    // Run after initial load
+    if (!state.isLoading) {
+      syncWithDatabase();
+    }
+  }, [state.isLoading]);
+
   const contextValue: SubscriptionContextType = {
     ...state,
     refreshSubscription,
@@ -265,6 +332,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     handleExpiration,
     canUseFeature,
     clearSubscription,
+    updateFromSuperwall,
   };
 
   return (

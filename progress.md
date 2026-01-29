@@ -44,15 +44,15 @@
 - [x] Task 25: Install and configure Superwall SDK
 - [x] Task 26: Create paywall UI with Basic ($4.99) and Full ($9.99) plans
 - [x] Task 27: Implement subscription state management
-- [ ] Task 28: Gate AI Voice feature behind Full plan
-- [ ] Task 29: Add upgrade prompts and restore purchases
+- [x] Task 28: Gate AI Voice feature behind Full plan
+- [x] Task 29: Add upgrade prompts and restore purchases
 
 ### Authentication & Database
-- [ ] Task 30: Set up Supabase project and configuration
-- [ ] Task 31: Create database schema (users, subscriptions)
-- [ ] Task 32: Build sign-up screen (name, email, password)
-- [ ] Task 33: Implement auth state management and session persistence
-- [ ] Task 34: Connect subscription data to user accounts
+- [x] Task 30: Set up Supabase project and configuration
+- [x] Task 31: Create database schema (users, subscriptions)
+- [x] Task 32: Build sign-up screen (name, email, password)
+- [x] Task 33: Implement auth state management and session persistence
+- [x] Task 34: Connect subscription data to user accounts
 
 ---
 
@@ -906,6 +906,48 @@ Run `npm start` and check:
 
 **Files modified:**
 - `app/_layout.tsx`
+
+---
+
+### Task 28: Gate AI Voice feature behind Full plan
+**Status:** Complete
+**Date:** 2026-01-29
+
+**Changes made:**
+1. Created `/components/paywall/UpgradeButton.tsx`:
+   - `UpgradeButton`: Reusable upgrade prompt button
+   - `FullPlanBadge`: Badge showing "Full Plan Feature"
+   - Compact mode for inline usage
+   - Triggers Superwall paywall or navigates to paywall screen
+
+2. Updated `/components/paywall/index.ts`:
+   - Added exports for UpgradeButton and FullPlanBadge
+
+3. Updated `/app/(tabs)/create.tsx` (AITTSScreen):
+   - Added `useCanUseAIVoice()` hook to check subscription
+   - Added FullPlanBadge next to "Select a Voice" title for non-subscribers
+   - Voice samples still playable for all users (to entice upgrade)
+   - Generate button replaced with UpgradeButton for non-Full users
+   - Full plan users see normal generate functionality
+
+**Behavior:**
+- **Free/Basic users**:
+  - See "Full Plan Feature" badge on AI Voice screen
+  - Can browse voices and play samples
+  - "Generate" button shows "Upgrade to Generate"
+  - Tapping upgrade shows paywall
+
+- **Full plan users**:
+  - No badge shown
+  - Full access to voice generation
+  - Normal "Generate with [Voice]" button
+
+**Files created:**
+- `components/paywall/UpgradeButton.tsx`
+
+**Files modified:**
+- `components/paywall/index.ts`
+- `app/(tabs)/create.tsx`
 
 ---
 

@@ -373,3 +373,58 @@ export async function getEntitlements(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Restore purchases result type
+ */
+export type RestoreResult = {
+  success: boolean;
+  restored: boolean;
+  plan: PlanType;
+  error?: string;
+};
+
+/**
+ * Restore previous purchases
+ * Returns success/failure and the restored plan if any
+ */
+export async function restorePurchases(): Promise<RestoreResult> {
+  if (!isSuperwallAvailable) {
+    // Mock for development
+    console.log('[Mock] Would restore purchases via Superwall');
+    return {
+      success: true,
+      restored: false,
+      plan: 'none',
+    };
+  }
+
+  try {
+    // Superwall's restore will check with the app store
+    await Superwall.shared.restorePurchases();
+
+    // Check the subscription status after restore
+    const status = await checkSubscriptionStatus();
+
+    return {
+      success: true,
+      restored: status.isSubscribed,
+      plan: status.plan,
+    };
+  } catch (error) {
+    console.error('Failed to restore purchases:', error);
+    return {
+      success: false,
+      restored: false,
+      plan: 'none',
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}
+
+/**
+ * Show upgrade paywall for Basic → Full plan upgrade
+ */
+export async function showUpgradePaywall(): Promise<void> {
+  await registerPlacement(PLACEMENTS.SETTINGS_UPGRADE, { upgradeFrom: 'basic' });
+}
