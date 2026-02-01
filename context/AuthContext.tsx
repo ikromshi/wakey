@@ -5,15 +5,15 @@
  */
 
 import { Session, User } from '@supabase/supabase-js';
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 import {
-  supabase,
   isSupabaseConfigured,
-  signIn as supabaseSignIn,
-  signUp as supabaseSignUp,
-  signOut as supabaseSignOut,
+  supabase,
   resetPassword as supabaseResetPassword,
+  signIn as supabaseSignIn,
+  signOut as supabaseSignOut,
+  signUp as supabaseSignUp,
 } from '@/services/supabase';
 
 interface AuthState {

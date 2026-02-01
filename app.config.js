@@ -18,8 +18,10 @@ export default {
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
+      bundleIdentifier: 'com.anonymous.risealarm',
     },
     android: {
+      package: 'com.anonymous.risealarm',
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
         foregroundImage: './assets/images/android-icon-foreground.png',
